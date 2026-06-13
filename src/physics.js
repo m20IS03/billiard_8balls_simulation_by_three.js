@@ -96,6 +96,7 @@ function makeBall({ id, label, color, x, z }) {
     isCue: id === 0,
     motionState: "stopped",
     isAirborne: false,
+    isFalling: false
   };
 }
 
@@ -499,15 +500,21 @@ function pocketBall(world, ball) {
 }
 
 function tryPocketBall(world, ball) {
-  if (!ball.active) return false;
+  if (!ball.active || ball.isFalling) return false;
 
   for (const pocket of POCKETS) {
     const dx = ball.position.x - pocket.x;
     const dz = ball.position.z - pocket.z;
     const distance = Math.hypot(dx, dz);
 
-    if (distance <= POCKET_RADIUS) {
-      pocketBall(world, ball);
+    // إذا دخل مركز الكرة بالكامل تقريباً داخل حدود الجيب
+    if (distance <= POCKET_RADIUS * 0.85) {
+      ball.isFalling = true;
+      ball.motionState = "sliding"; // تحويلها للانزلاق لتبدأ بالسقوط
+      
+      // توجيه سرعة الكرة ببطء نحو مركز الجيب الداخلي لإعطاء تأثير الجاذبية الداخلية
+      ball.velocity.x = (pocket.x - ball.position.x) * 2;
+      ball.velocity.z = (pocket.z - ball.position.z) * 2;
       return true;
     }
   }
@@ -817,11 +824,41 @@ function respotCueBallIfNeeded(world) {
 // v(t + dt) = v(t) + a dt
 // r(t + dt) = r(t) + v(t + dt) dt
 // Airborne balls use ay = -g and skip cloth, rails, and pocket checks.
+// Fixed-step world update with semi-implicit Euler:
+// v(t + dt) = v(t) + a dt
+// r(t + dt) = r(t) + v(t + dt) dt
+// Airborne balls use ay = -g and skip cloth, rails, and pocket checks.
 export function stepWorld(world, dt) {
   for (const ball of world.balls) {
     if (!ball.active) continue;
 
-    // 1. حسابات حركة القفز الرأسية (Y) والجاذبية
+    // 1. معالجة حركة السقوط التدريجي والواقعي داخل الجيب
+    if (ball.isFalling) {
+      // سحب الكرة لأسفل (تقليل الـ Y بتأثير الجاذبية)
+      ball.velocity.y -= G * dt;
+      ball.position.y += ball.velocity.y * dt;
+
+      // كبح الحركة الأفقية تدريجيًا لتسقط الكرة بشكل عمودي تقريباً داخل الجيب
+      ball.velocity.x *= 0.9;
+      ball.velocity.z *= 0.9;
+
+      // تحديث الموقع الأفقي بناءً على السرعة المتبقية المقيدة
+      ball.position.x += ball.velocity.x * dt;
+      ball.position.z += ball.velocity.z * dt;
+
+      // إذا غطست الكرة بالكامل تحت مستوى سطح الطاولة
+      if (ball.position.y < (TABLE_HEIGHT / 2) - ball.radius) {
+        // احتساب النقاط/الأخطاء وتعطيل الكرة نهائيًا
+        pocketBall(world, ball);
+        // إعادة تعيين المتغير ليكون جاهزًا عند إعادة توليد الكرة البيضاء لاحقًا
+        ball.isFalling = false;
+      }
+
+      // تخطي باقي حسابات الفيزياء والتصادمات فوق الطاولة لأن الكرة تسقط بالأسفل
+      continue;
+    }
+
+    // 2. حسابات حركة القفز الرأسية العادية (Y) والجاذبية الأصلية
     if (ball.isAirborne) {
       // تطبيق الجاذبية لتقليل السرعة الرأسية تدريجياً
       ball.velocity.y -= G * dt;
@@ -845,7 +882,7 @@ export function stepWorld(world, dt) {
       ball.position.y = BALL_Y;
     }
 
-    // 2. تحديث حالات الاحتكاك والدوران المعتادة
+    // 3. تحديث حالات الاحتكاك والدوران المعتادة
     updateMotionState(ball);
 
     if (ball.motionState === "sliding") {
@@ -862,11 +899,11 @@ export function stepWorld(world, dt) {
       ball.velocity.z += TABLE_PLANE_ACCELERATION.z * dt;
     }
 
-    // 3. تحديث الموقع الأفقي (X, Z) بناءً على السرعات الأفقية
+    // 4. تحديث الموقع الأفقي (X, Z) بناءً على السرعات الأفقية
     ball.position.x += ball.velocity.x * dt;
     ball.position.z += ball.velocity.z * dt;
 
-    // 4. استدعاء فحص الجدران والحواف (يعمل دائماً لمنع الاختراق حتى في الهواء)
+    // 5. استدعاء فحص الجدران والحواف (يعمل دائماً لمنع الاختراق حتى في الهواء)
     handleTableWalls(world, ball);
 
     // فحص الجيوب (يحدث فقط إذا كانت الكرة قريبة من سطح الطاولة وليس طائرة عالياً في الهواء)
@@ -883,6 +920,9 @@ export function stepWorld(world, dt) {
     if (!ball.active) continue;
     handleTableWalls(world, ball);
   }
+
+  // التحقق تلقائيًا من حالة الكرة البيضاء وإعادتها للمشهد بمجرد توقف حركة بقية الكرات
+  respotCueBallIfNeeded(world);
 
   // إعادة ضبط الكرة البيضاء قانونياً إذا طارت خارج حدود الغرفة تماماً بالخطأ
   const cueBall = world.balls.find((b) => b.isCue);
