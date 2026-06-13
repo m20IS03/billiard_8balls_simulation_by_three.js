@@ -650,15 +650,6 @@ export default function App() {
               <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
             </div>
           </section>
-
-          <section className="panel-section note">
-            <h2>النموذج الفيزيائي</h2>
-            <p>
-              النموذج يعمل على مستوى أفقي ثنائي الأبعاد داخل مشهد ثلاثي الأبعاد،
-              مع احتكاك دحرجة، معاملات ارتداد، تصحيح تداخل، وخطوة زمنية ثابتة
-              لزيادة استقرار التصادمات.
-            </p>
-          </section>
         </aside>
       </div>
     </main>
