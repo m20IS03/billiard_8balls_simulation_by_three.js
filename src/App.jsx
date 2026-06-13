@@ -17,6 +17,8 @@ import {
   makeWorld,
   shootCueBall,
   stepWorld,
+  PHYSICS_CONFIG_METADATA,
+  setPhysicsParameter,
 } from "./physics.js";
 
 // مكون لوحة النتائج (Scoreboard) الأصلي متطابق تماماً
@@ -100,9 +102,15 @@ function Stat({ title, value }) {
 export default function App() {
   // المرجع الخاص بحاوية الرسم ثلاثي الأبعاد
   const containerRef = useRef(null);
-
+  const [physicsValues, setPhysicsValues] = useState({
+    G: PHYSICS_CONFIG_METADATA.G.default,
+    MU_S: PHYSICS_CONFIG_METADATA.MU_S.default,
+    MU_R: PHYSICS_CONFIG_METADATA.MU_R.default,
+    BALL_MASS: PHYSICS_CONFIG_METADATA.BALL_MASS.default,
+  });
   // حالات التحكم بالواجهة الرسومية عبر React
-  const [power, setPower] = useState(55);
+  // في ملف App.jsx، قم بتغيير الحالة من power إلى force
+  const [force, setForce] = useState(5.0); // القيمة الافتراضية 5 نيوتن
   const [angleDeg, setAngleDeg] = useState(0);
   const [cueContactY, setCueContactY] = useState(0);
   const [cueContactX, setCueContactX] = useState(0);
@@ -113,7 +121,7 @@ export default function App() {
 
   // مرجع لحفظ أحدث قيم المدخلات لتجنب الاستدعاءات المغلقة القديمة (Stale Closures) داخل حلقة الـ Animation
   const inputsRef = useRef({
-    power,
+    force,
     angleDeg,
     cueContactY,
     cueContactX,
@@ -124,7 +132,7 @@ export default function App() {
 
   useEffect(() => {
     inputsRef.current = {
-      power,
+      force,
       angleDeg,
       cueContactY,
       cueContactX,
@@ -133,7 +141,7 @@ export default function App() {
       resetSignal,
     };
   }, [
-    power,
+    force,
     angleDeg,
     cueContactY,
     cueContactX,
@@ -512,7 +520,7 @@ export default function App() {
         lastHitSignal = currentInputs.hitSignal;
         shootCueBall(
           world,
-          currentInputs.power,
+          currentInputs.force,
           currentInputs.angleDeg,
           currentInputs.cueContactY,
           currentInputs.cueContactX,
@@ -569,7 +577,7 @@ export default function App() {
         cueStickGroup.visible = true;
 
         const angle = THREE.MathUtils.degToRad(currentInputs.angleDeg);
-        const length = 0.22 + (currentInputs.power / 100) * 0.48;
+        const length = 0.22 + (currentInputs.force / 50) * 0.48;
         const startOffset = BALL_RADIUS + 0.04;
         const guideY = BALL_Y + 0.005;
 
@@ -583,7 +591,7 @@ export default function App() {
         guideCylinder.position.set(startOffset + length / 2, 0, 0);
         guideCone.position.set(startOffset + length + 0.035, 0, 0);
 
-        const pullBack = 0.12 + (currentInputs.power / 100) * 0.26;
+        const pullBack = 0.12 + (currentInputs.force / 50) * 0.26;
         cueStickGroup.position.set(
           cueBall.position.x,
           guideY,
@@ -673,38 +681,26 @@ export default function App() {
         ></section>
 
         <aside className="side-panel">
-          <section className="panel-section">
-            <p className="eyebrow">Pure Three.js + فيزياء يدوية</p>
-            <h1>محاكاة بلياردو 3D</h1>
-            <p className="description">
-              العرض ثلاثي الأبعاد يتم عبر مكتبة Three.js الصرفة مباشرةً وبشكل
-              متزامن، أما الحركة والتصادمات والاحتكاك فهي محسوبة برمجياً ومكتوبة
-              يدويًا لضمان أعلى أداء ممكن.
-            </p>
-          </section>
-
           <section className="panel-section controls">
             <label>
               <span>
-                <b>قوة الضربة</b>
-                <strong>{power}%</strong>
+                <b>قوة الضربة (نيوتن)</b>
               </span>
               <input
-                type="range"
-                min="5"
-                max="100"
-                value={power}
-                onChange={(e) => setPower(Number(e.target.value))}
+                type="number"
+                min="0.5"
+                max="50"
+                step="0.5"
+                value={force}
+                onChange={(e) => setForce(Number(e.target.value))}
               />
             </label>
-
             <label>
               <span>
-                <b>زاوية الضربة</b>
-                <strong>{angleDeg}°</strong>
+                <b>زاوية الضربة (°)</b>
               </span>
               <input
-                type="range"
+                type="number"
                 min="-180"
                 max="180"
                 value={angleDeg}
@@ -714,13 +710,10 @@ export default function App() {
 
             <label>
               <span>
-                <b>موضع الضربة العمودي</b>
-                <strong>
-                  {cueContactY.toFixed(2)} - {cueContactMeaning}
-                </strong>
+                <b>موضع الضربة العمودي ({cueContactMeaning})</b>
               </span>
               <input
-                type="range"
+                type="number"
                 min="-0.7"
                 max="0.7"
                 step="0.05"
@@ -731,13 +724,10 @@ export default function App() {
 
             <label>
               <span>
-                <b>موضع الضربة الأفقي</b>
-                <strong>
-                  {cueContactX.toFixed(2)} - {cueSideMeaning}
-                </strong>
+                <b>موضع الضربة الأفقي ({cueSideMeaning})</b>
               </span>
               <input
-                type="range"
+                type="number"
                 min="-0.7"
                 max="0.7"
                 step="0.05"
@@ -748,11 +738,10 @@ export default function App() {
 
             <label>
               <span>
-                <b>ميل العصا للقفز</b>
-                <strong>{cueElevationDeg}°</strong>
+                <b>ميل العصا للقفز (°)</b>
               </span>
               <input
-                type="range"
+                type="number"
                 min="0"
                 max="45"
                 step="1"
@@ -761,6 +750,7 @@ export default function App() {
               />
             </label>
 
+            {/* باقي زرار الضرب وإعادة الضبط كما هي */}
             <div className="button-grid">
               <button
                 type="button"
@@ -777,11 +767,6 @@ export default function App() {
                 إعادة ضبط
               </button>
             </div>
-
-            <p className="hint">
-              يمكن تغيير الزاوية من الشريط أو بتحريك المؤشر والنقر المباشر فوق
-              سطح الطاولة عندما تكون الكرات متوقفة.
-            </p>
           </section>
 
           <section className="panel-section">
@@ -794,6 +779,46 @@ export default function App() {
               <Stat title="Scratch" value={stats.scratches} />
               <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
             </div>
+          </section>
+          <section className="panel-section">
+            <h2>إعدادات الفيزياء الرقمية</h2>
+            {Object.entries(PHYSICS_CONFIG_METADATA).map(([key, meta]) => (
+              <div
+                key={key}
+                className="control-group"
+                style={{ marginBottom: "15px" }}
+              >
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  {meta.label}
+                </label>
+                <input
+                  type="number"
+                  step="0.01" // للسماح بالكسور العشرية
+                  defaultValue={meta.default}
+                  // استخدام onBlur لتحديث المحرك عند الانتهاء من الكتابة
+                  onBlur={(e) => {
+                    const val = parseFloat(e.target.value);
+                    // نمرر القيمة للمحرك، والدالة setPhysicsParameter ستقوم بضبط الحدود (Clamping) تلقائياً
+                    setPhysicsParameter(null, key, val);
+                    console.log(`تم تحديث ${key} إلى: ${val}`);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    borderRadius: "4px",
+                    border: "1px solid #334155",
+                    background: "#1e293b",
+                    color: "#f8fafc",
+                  }}
+                />
+              </div>
+            ))}
           </section>
         </aside>
       </div>

@@ -9,12 +9,52 @@ export const RAIL_TOP_Y = TABLE_HEIGHT / 2 + 0.075; // الارتفاع الأق
 export const BALL_RADIUS = 0.0286;
 export const BALL_Y = TABLE_HEIGHT / 2 + BALL_RADIUS;
 export const POCKET_RADIUS = 0.075;
+// 1. توصيف المعطيات الفيزيائية: القيم الافتراضية والحدود المسموحة (Min / Max)
+export const PHYSICS_CONFIG_METADATA = {
+  G: { label: "الجاذبية العمودية", default: 9.81, min: 0, max: 25 }, // 0 تعني انعدام الجاذبية تماماً
+  MU_S: { label: "معامل احتكاك الانزلاق", default: 0.2, min: 0, max: 1.0 }, // 0 تعني إهمال احتكاك الانزلاق
+  MU_R: { label: "معامل احتكاك التدحرج", default: 0.015, min: 0, max: 0.1 }, // 0 تعني إهمال احتكاك التدحرج
+  BALL_MASS: {
+    label: "كتلة الكرة (كيلوجرام)",
+    default: 0.17,
+    min: 0.05,
+    max: 0.6,
+  },
+  BALL_RESTITUTION: {
+    label: "مرونة ارتداد الكرات البينية",
+    default: 0.94,
+    min: 0,
+    max: 1.0,
+  },
+  WALL_RESTITUTION: {
+    label: "مرونة ارتداد الحواف الجانبية",
+    default: 0.78,
+    min: 0,
+    max: 1.0,
+  },
+  TABLE_RESTITUTION: {
+    label: "مرونة ارتداد سطح الطاولة",
+    default: 0.5,
+    min: 0,
+    max: 1.0,
+  },
+};
 
+// 2. تعيين المتغيرات الحية القابلة للتحديث الحركي (باستخدام let بدلاً من const)
+export let G = PHYSICS_CONFIG_METADATA.G.default;
+export let MU_R = PHYSICS_CONFIG_METADATA.MU_R.default;
+export let MU_S = PHYSICS_CONFIG_METADATA.MU_S.default;
+export let BALL_MASS = PHYSICS_CONFIG_METADATA.BALL_MASS.default;
+export let BALL_RESTITUTION = PHYSICS_CONFIG_METADATA.BALL_RESTITUTION.default;
+export let WALL_RESTITUTION = PHYSICS_CONFIG_METADATA.WALL_RESTITUTION.default;
+export let TABLE_RESTITUTION =
+  PHYSICS_CONFIG_METADATA.TABLE_RESTITUTION.default;
+
+// عزم القصور الذاتي للكرة (سيتحدث تلقائياً عند تغيير الكتلة)
+export let BALL_INERTIA = (2 / 5) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
 // Friction, mass, and restitution constants.
 // K = 1/2 m v^2, and I = 2/5 mR^2 for a solid sphere.
-export const G = 9.81;
-export const MU_R = 0.015;
-export const MU_S = 0.2;
+
 // Sidespin path curvature:
 // A small educational side force is applied while the ball moves on the cloth.
 // This matches the study statement that side friction can slightly change direction.
@@ -22,16 +62,12 @@ export const MU_S = 0.2;
 export const SIDE_SPIN_CURVE_COEFFICIENT = 0.015;
 export const SIDE_SPIN_EPSILON = 0.05;
 export const MAX_SIDE_SPIN_ACCELERATION = 0.35;
-export const BALL_MASS = 0.17;
-export const BALL_INERTIA = (2 / 5) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
-export const BALL_RESTITUTION = 0.94;
+
 // Tangential restitution for spin contact during ball-ball collision.
 // 0 means tangential slip is reduced without bouncing tangentially.
 export const BALL_TANGENTIAL_RESTITUTION = 0.0;
-export const WALL_RESTITUTION = 0.78;
 // Simple cushion friction used only to transfer sidespin during rail collision.
 export const WALL_TANGENTIAL_FRICTION = 0.2;
-export const TABLE_RESTITUTION = 0.7;
 
 export const STOP_SPEED = 0.012;
 export const SLIP_SPEED_EPSILON = 0.002;
@@ -74,7 +110,57 @@ const OBJECT_BALL_COLORS = [
 ];
 
 const TABLE_PLANE_ACCELERATION = new THREE.Vector3(0, 0, 0);
+/**
+ * دالة لتحديث المتغيرات الفيزيائية ديناميكياً مع مراعاة القيود والحدود
+ * @param {Object} world - كائن اللعبة الحالي لتحديث كتل الكرات النشطة فيه
+ * @param {string} key - اسم المتغير الفيزيائي (مثل 'MU_S' أو 'G')
+ * @param {number} value - القيمة الجديدة المدخلة من المستخدم
+ */
+export function setPhysicsParameter(world, key, value) {
+  // التحقق من وجود المتغير في قائمة التوصيفات
+  if (!PHYSICS_CONFIG_METADATA[key]) return null;
 
+  const meta = PHYSICS_CONFIG_METADATA[key];
+
+  // تطبيق قيود المجال المحدد تلقائياً (منع القيم الخاطئة أو الخطيرة)
+  const clampedValue = Math.max(meta.min, Math.min(meta.max, value));
+
+  // تحديث القيمة المقابلة في محرك الفيزياء
+  switch (key) {
+    case "G":
+      G = clampedValue;
+      break;
+    case "MU_R":
+      MU_R = clampedValue;
+      break;
+    case "MU_S":
+      MU_S = clampedValue;
+      break;
+    case "BALL_RESTITUTION":
+      BALL_RESTITUTION = clampedValue;
+      break;
+    case "WALL_RESTITUTION":
+      WALL_RESTITUTION = clampedValue;
+      break;
+    case "TABLE_RESTITUTION":
+      TABLE_RESTITUTION = clampedValue;
+      break;
+    case "BALL_MASS":
+      BALL_MASS = clampedValue;
+      // تحديث مصفوفة عزم القصور الذاتي فوراً للحفاظ على دقة الدوران الفيزيائي الدقيق
+      BALL_INERTIA = (2 / 5) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
+
+      // تحديث كتل الكرات الموجودة حالياً داخل الطاولة لضمان تطبيق الحسابات الجديدة فوراً
+      if (world && world.balls) {
+        world.balls.forEach((ball) => {
+          ball.mass = BALL_MASS;
+        });
+      }
+      break;
+  }
+
+  return clampedValue; // إرجاع القيمة الفعلية المعتمدة بعد الكبح
+}
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -275,7 +361,7 @@ function landBallOnTable(ball) {
 // vy = v0 sin(alpha)
 export function shootCueBall(
   world,
-  power,
+  forceInNewtons, // القوة بالنيوتن
   angleDeg,
   cueContactY = 0,
   cueContactX = 0,
@@ -287,28 +373,21 @@ export function shootCueBall(
     return false;
   }
 
-  const normalizedPower = THREE.MathUtils.clamp(power, 0, 100) / 100;
+  // 1. حساب السرعة الابتدائية باستخدام قانون نيوتن (F = ma)
+  // نفرض أن زمن تلامس رأس العصا بالكرة هو 0.05 ثانية (Impulse Time)
+  const impulseTime = 0.05;
+  const acceleration = forceInNewtons / cue.mass;
+  const shotSpeed = acceleration * impulseTime;
+
+  // الحسابات الأخرى كما هي
   const clampedContactY = THREE.MathUtils.clamp(cueContactY, -0.7, 0.7);
   const clampedContactX = THREE.MathUtils.clamp(cueContactX, -0.7, 0.7);
 
-  // التأكد من عمل السقف الحسابي لزاوية القفز بشكل مرن (من 0 إلى 85 درجة مثلاً)
-  // لتجنب أي تصفير ناتج عن قيم MIN_JUMP_ANGLE_DEG القديمة
-  const minAngle =
-    typeof MIN_JUMP_ANGLE_DEG !== "undefined" ? MIN_JUMP_ANGLE_DEG : 0;
-  const maxAngle =
-    typeof MAX_JUMP_ANGLE_DEG !== "undefined" ? MAX_JUMP_ANGLE_DEG : 85;
-  const clampedElevationDeg = THREE.MathUtils.clamp(
-    cueElevationDeg,
-    minAngle,
-    maxAngle,
+  const alpha = THREE.MathUtils.degToRad(
+    THREE.MathUtils.clamp(cueElevationDeg, 0, 85),
   );
-
-  const shotSpeed =
-    CUE_MIN_SPEED + normalizedPower * (CUE_MAX_SPEED - CUE_MIN_SPEED);
   const angle = THREE.MathUtils.degToRad(angleDeg);
-  const alpha = THREE.MathUtils.degToRad(clampedElevationDeg);
 
-  // الحسابات المثلثية للمقذوفات ثلاثية الأبعاد
   const horizontalSpeed = shotSpeed * Math.cos(alpha);
   const vy = shotSpeed * Math.sin(alpha);
   const vx = Math.cos(angle) * horizontalSpeed;
@@ -316,18 +395,17 @@ export function shootCueBall(
 
   cue.velocity.set(vx, vy, vz);
 
+  // باقي الحسابات الدورانية...
   const hitOffsetY = clampedContactY * BALL_RADIUS;
   const hitOffsetX = clampedContactX * BALL_RADIUS;
   const impulseX = cue.mass * vx;
   const impulseZ = cue.mass * vz;
 
-  // الحسابات الدورانية لعزم ضربة العصا
   cue.omega.x = (hitOffsetY * impulseZ) / BALL_INERTIA;
   cue.omega.y = (hitOffsetX * cue.mass * shotSpeed) / BALL_INERTIA;
   cue.omega.z = (-hitOffsetY * impulseX) / BALL_INERTIA;
 
-  // تفعيل حالة الطيران إذا كانت زاوية الرفع الفعلية أكبر من الصفر وبسرعة رأسية حقيقية
-  if (clampedElevationDeg > 0.1 && vy > 0.05) {
+  if (cueElevationDeg > 0.1 && vy > 0.05) {
     cue.isAirborne = true;
     cue.motionState = "sliding";
   } else {
