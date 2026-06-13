@@ -156,7 +156,6 @@ export default function App() {
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.01, 40);
     camera.position.set(0, 2.5, 2.05);
     camera.lookAt(0, 0, 0);
-
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance",
@@ -164,9 +163,14 @@ export default function App() {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    containerRef.current.appendChild(renderer.domElement);
+    renderer.shadowMap.type = THREE.PCFShadowMap;
 
+    // 👇 السطر السحري المضاف هنا لحل مشكلة تجمّد الرسوم تماماً 👇
+    if (containerRef.current) {
+      containerRef.current.innerHTML = "";
+    }
+
+    containerRef.current.appendChild(renderer.domElement);
     // 2. منظومة الإضاءة والظلال الكاملة المطابقة للأصل
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
@@ -722,15 +726,6 @@ export default function App() {
               <Stat title="Scratch" value={stats.scratches} />
               <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
             </div>
-          </section>
-
-          <section className="panel-section note">
-            <h2>النموذج الفيزيائي</h2>
-            <p>
-              النموذج يعمل على مستوى أفقي ثنائي الأبعاد داخل مشهد ثلاثي الأبعاد،
-              مع احتكاك دحرجة، معاملات ارتداد، تصحيح تداخل، وخطوة زمنية ثابتة
-              لزيادة استقرار التصادمات.
-            </p>
           </section>
         </aside>
       </div>
