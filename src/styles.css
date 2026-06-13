@@ -314,3 +314,20 @@ button.secondary {
     padding: 12px;
   }
 }
+.control-group {
+  margin-bottom: 15px;
+}
+
+.panel-section h2 {
+  font-size: 14px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 8px;
+  margin-bottom: 15px;
+}
+
+.control-group label {
+  color: #cbd5e1;
+  font-weight: 500;
+}

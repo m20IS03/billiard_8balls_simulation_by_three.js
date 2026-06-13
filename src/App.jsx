@@ -681,76 +681,85 @@ export default function App() {
         ></section>
 
         <aside className="side-panel">
+          {/* إعدادات الضربة */}
           <section className="panel-section controls">
-            <label>
-              <span>
-                <b>قوة الضربة (نيوتن)</b>
-              </span>
-              <input
-                type="number"
-                min="0.5"
-                max="50"
-                step="0.5"
-                value={force}
-                onChange={(e) => setForce(Number(e.target.value))}
-              />
-            </label>
-            <label>
-              <span>
-                <b>زاوية الضربة (°)</b>
-              </span>
-              <input
-                type="number"
-                min="-180"
-                max="180"
-                value={angleDeg}
-                onChange={(e) => setAngleDeg(Number(e.target.value))}
-              />
-            </label>
+            <h2>إعدادات الضربة</h2>
+            {[
+              {
+                label: "قوة الضربة (نيوتن)",
+                val: force,
+                setter: setForce,
+                min: 0.5,
+                max: 50,
+                step: 0.5,
+              },
+              {
+                label: "زاوية الضربة (°)",
+                val: angleDeg,
+                setter: setAngleDeg,
+                min: -180,
+                max: 180,
+                step: 1,
+              },
+              {
+                label: `موضع الضربة العمودي (${cueContactMeaning})`,
+                val: cueContactY,
+                setter: setCueContactY,
+                min: -0.7,
+                max: 0.7,
+                step: 0.05,
+              },
+              {
+                label: `موضع الضربة الأفقي (${cueSideMeaning})`,
+                val: cueContactX,
+                setter: setCueContactX,
+                min: -0.7,
+                max: 0.7,
+                step: 0.05,
+              },
+              {
+                label: "ميل العصا للقفز (°)",
+                val: cueElevationDeg,
+                setter: setCueElevationDeg,
+                min: 0,
+                max: 45,
+                step: 1,
+              },
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                className="control-group"
+                style={{ marginBottom: "15px" }}
+              >
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    marginBottom: "5px",
+                    color: "#cbd5e1",
+                  }}
+                >
+                  {item.label}
+                </label>
+                <input
+                  type="number"
+                  value={item.val}
+                  min={item.min}
+                  max={item.max}
+                  step={item.step}
+                  onChange={(e) => item.setter(Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    borderRadius: "4px",
+                    border: "1px solid #334155",
+                    background: "#1e293b",
+                    color: "#f8fafc",
+                  }}
+                />
+              </div>
+            ))}
 
-            <label>
-              <span>
-                <b>موضع الضربة العمودي ({cueContactMeaning})</b>
-              </span>
-              <input
-                type="number"
-                min="-0.7"
-                max="0.7"
-                step="0.05"
-                value={cueContactY}
-                onChange={(e) => setCueContactY(Number(e.target.value))}
-              />
-            </label>
-
-            <label>
-              <span>
-                <b>موضع الضربة الأفقي ({cueSideMeaning})</b>
-              </span>
-              <input
-                type="number"
-                min="-0.7"
-                max="0.7"
-                step="0.05"
-                value={cueContactX}
-                onChange={(e) => setCueContactX(Number(e.target.value))}
-              />
-            </label>
-
-            <label>
-              <span>
-                <b>ميل العصا للقفز (°)</b>
-              </span>
-              <input
-                type="number"
-                min="0"
-                max="45"
-                step="1"
-                value={cueElevationDeg}
-                onChange={(e) => setCueElevationDeg(Number(e.target.value))}
-              />
-            </label>
-
-            {/* باقي زرار الضرب وإعادة الضبط كما هي */}
             <div className="button-grid">
               <button
                 type="button"
@@ -769,19 +778,9 @@ export default function App() {
             </div>
           </section>
 
+          {/* إعدادات الفيزياء الرقمية */}
           <section className="panel-section">
-            <h2>بيانات الحركة</h2>
-            <div className="stats-grid">
-              <Stat title="سرعة البيضاء" value={stats.cueSpeed} />
-              <Stat title="كرات تتحرك" value={stats.moving} />
-              <Stat title="التصادمات" value={stats.collisions} />
-              <Stat title="كرات دخلت" value={stats.pocketed} />
-              <Stat title="Scratch" value={stats.scratches} />
-              <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
-            </div>
-          </section>
-          <section className="panel-section">
-            <h2>إعدادات الفيزياء الرقمية</h2>
+            <h2>إعدادات الفيزياء</h2>
             {Object.entries(PHYSICS_CONFIG_METADATA).map(([key, meta]) => (
               <div
                 key={key}
@@ -793,21 +792,18 @@ export default function App() {
                     display: "block",
                     fontSize: "12px",
                     marginBottom: "5px",
+                    color: "#cbd5e1",
                   }}
                 >
                   {meta.label}
                 </label>
                 <input
                   type="number"
-                  step="0.01" // للسماح بالكسور العشرية
+                  step="0.01"
                   defaultValue={meta.default}
-                  // استخدام onBlur لتحديث المحرك عند الانتهاء من الكتابة
-                  onBlur={(e) => {
-                    const val = parseFloat(e.target.value);
-                    // نمرر القيمة للمحرك، والدالة setPhysicsParameter ستقوم بضبط الحدود (Clamping) تلقائياً
-                    setPhysicsParameter(null, key, val);
-                    console.log(`تم تحديث ${key} إلى: ${val}`);
-                  }}
+                  onBlur={(e) =>
+                    setPhysicsParameter(null, key, parseFloat(e.target.value))
+                  }
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -819,6 +815,19 @@ export default function App() {
                 />
               </div>
             ))}
+          </section>
+
+          {/* بيانات الحركة */}
+          <section className="panel-section">
+            <h2>بيانات الحركة</h2>
+            <div className="stats-grid">
+              <Stat title="سرعة البيضاء" value={stats.cueSpeed} />
+              <Stat title="كرات تتحرك" value={stats.moving} />
+              <Stat title="التصادمات" value={stats.collisions} />
+              <Stat title="كرات دخلت" value={stats.pocketed} />
+              <Stat title="Scratch" value={stats.scratches} />
+              <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
+            </div>
           </section>
         </aside>
       </div>
