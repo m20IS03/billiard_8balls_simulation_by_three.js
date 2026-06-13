@@ -165,7 +165,7 @@ export default function App() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
-    // 👇 السطر السحري المضاف هنا لحل مشكلة تجمّد الرسوم تماماً 👇
+    // السطر السحري المضاف هنا لحل مشكلة تجمّد الرسوم تماماً
     if (containerRef.current) {
       containerRef.current.innerHTML = "";
     }
@@ -288,68 +288,45 @@ export default function App() {
     r4.castShadow = true;
     tableGroup.add(r4);
 
-    // ==========================================
-    // تعديل الجيوب الستة لتبدو ثلاثية الأبعاد وواقعية
-    // ==========================================
-
-    const pocketDepth = 0.06; // عمق الجيب لأسفل (6 سنتيمترات)
-
-    // 1. مجسم فجوة الجيب (جعل الجزء السفلي أضيق قليلاً ليعطي إيحاء بالعمق المخروطي)
+    // الجيوب الستة ثلاثية الأبعاد
+    const pocketDepth = 0.06;
     const pocketGeometry = new THREE.CylinderGeometry(
-      POCKET_RADIUS, // نصف القطر العلوي
-      POCKET_RADIUS * 0.85, // نصف القطر السفلي (أصغر قليلاً للواقعية)
-      pocketDepth, // الارتفاع (العمق الفعلي)
-      32, // النعومة دائرية
+      POCKET_RADIUS,
+      POCKET_RADIUS * 0.85,
+      pocketDepth,
+      32,
     );
-
-    // مادة الجيب: أسود داكن جداً يمتص الضوء
     const pocketMaterial = new THREE.MeshStandardMaterial({
-      color: "#05070f", // أسود قريب من الفراغ
-      roughness: 0.9, // خشن جداً لامتصاص الضوء والظلال
+      color: "#05070f",
+      roughness: 0.9,
       metalness: 0.1,
     });
 
-    // 2. مجسم إطار الجيب الواقي (The Rim) - حلقة جلدية تحيط بكل جيب
     const rimGeometry = new THREE.RingGeometry(
-      POCKET_RADIUS, // نصف القطر الداخلي (يبدأ من حافة الجيب)
-      POCKET_RADIUS + 0.018, // نصف القطر الخارجي (يمتد فوق اللباد)
-      32, // النعومة
+      POCKET_RADIUS,
+      POCKET_RADIUS + 0.018,
+      32,
     );
-
-    // مادة الإطار: مادة تشبه الجلد أو البلاستيك المقوى اللامع قليلاً
     const rimMaterial = new THREE.MeshStandardMaterial({
-      color: "#1e293b", // لون رمادي داكن/جلد أسود
-      roughness: 0.4, // بريق خفيف يعكس الإضاءة العلوية بشكل واقعي
+      color: "#1e293b",
+      roughness: 0.4,
       metalness: 0.2,
-      side: THREE.DoubleSide, // الرسم من الجهتين لمنع اختفائه عند زوايا الكاميرا
+      side: THREE.DoubleSide,
     });
 
-    // رسم ووضع الجيوب والإطارات في المشهد
     POCKETS.forEach((pocket) => {
-      // --- أ: إنشاء فجوة الجيب العمودية ---
       const pMesh = new THREE.Mesh(pocketGeometry, pocketMaterial);
-
-      // إنزال الجيب لأسفل: (TABLE_HEIGHT / 2) هو السطح، نطرح منه نصف العمق لتسقط الأسطوانة لأسفل
       pMesh.position.set(
         pocket.x,
         TABLE_HEIGHT / 2 - pocketDepth / 2,
         pocket.z,
       );
-
-      // تفعيل استقبال الظلال لكي تظهر ظلال حواف الطاولة والكرات بداخل الجيب
       pMesh.receiveShadow = true;
       tableGroup.add(pMesh);
 
-      // --- ب: إنشاء إطار الجيب (الحافة الجلدية) ---
       const rimMesh = new THREE.Mesh(rimGeometry, rimMaterial);
-
-      // نضع الحلقة فوق سطح الطاولة بـ 1 مليمتر فقط لتجنب تداخل الأسطح بصرياً (Z-fighting)
       rimMesh.position.set(pocket.x, TABLE_HEIGHT / 2 + 0.001, pocket.z);
-
-      // تدوير الحلقة لتصبح أفقية موازية لسطح الطاولة
       rimMesh.rotation.x = -Math.PI / 2;
-
-      // تجعل الحافة تسقط ظلالاً خفيفة على اللباد لمزيد من الواقعية
       rimMesh.castShadow = true;
       tableGroup.add(rimMesh);
     });
@@ -358,7 +335,7 @@ export default function App() {
     // 4. بناء خط التصويب المساعد (AimGuide) والعصا (CueStick) كمجسمات منفصلة ديناميكية
     const aimGuideGroup = new THREE.Group();
     const guideCylinder = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0055, 0.0055, 1, 18), // طول افتراضي 1 يتم عمل scale له لاحقاً لحفظ الأداء
+      new THREE.CylinderGeometry(0.0055, 0.0055, 1, 18),
       new THREE.MeshStandardMaterial({
         color: "#f8fafc",
         emissive: "#334155",
@@ -397,21 +374,69 @@ export default function App() {
     cueStickGroup.add(tipMesh);
     scene.add(cueStickGroup);
 
-    // 5. إدارة وتهيئة الكرات ثلاثية الأبعاد وربطها بالمحرك الفيزيائي المستورد
+    // ============================================================
+    // 5. إدارة وتهيئة الكرات ثلاثية الأبعاد (تحديث منطق الكرات المخططة)
+    // ============================================================
     let world = makeWorld();
     const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
     const ballVisuals = [];
 
     const initializeBallMeshes = () => {
-      ballVisuals.forEach((v) => scene.remove(v.mesh));
+      // إزالة ومسح الكرات السابقة وتنظيف موادها من كارت الشاشة لمنع الـ Memory Leak
+      ballVisuals.forEach((v) => {
+        scene.remove(v.mesh);
+        if (v.mesh.material) {
+          if (v.mesh.material.map) v.mesh.material.map.dispose();
+          v.mesh.material.dispose();
+        }
+      });
       ballVisuals.length = 0;
 
+      // دالة مساعدة لإنشاء نسيج مخطط (Stripe Texture) ديناميكياً بواسطة Canvas
+      const createStripedTexture = (colorHex) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 128;
+        const ctx = canvas.getContext("2d");
+
+        // أ) رسم لون الخلفية الأبيض الأساسي (أطراف الكرة البلياردو المخططة)
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, 256, 128);
+
+        // ب) رسم شريط عريض ملوّن بدقة في منتصف الإحداثيات الأفقية للكرة
+        ctx.fillStyle = colorHex;
+        ctx.fillRect(0, 32, 256, 64);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        return texture;
+      };
+
       world.balls.forEach((ball) => {
-        const ballMat = new THREE.MeshStandardMaterial({
-          color: ball.color || "#ffffff",
-          roughness: 0.15,
-          metalness: 0.05,
-        });
+        // التحقق برمجياً مما إذا كانت الكرة مخططة (بناءً على معيار الـ 8-Ball وهو ID من 9 لـ 15 أو أي خاصية ممررة)
+        const isStripe =
+          ball.isStripe ||
+          ball.type === "stripes" ||
+          (ball.id >= 9 && ball.id <= 15);
+
+        let ballMat;
+
+        if (isStripe) {
+          // إذا كانت الكرة مخططة، نستخدم النسيج الديناميكي المولد (map) بدلاً من اللون السادة
+          ballMat = new THREE.MeshStandardMaterial({
+            map: createStripedTexture(ball.color || "#ff0000"),
+            roughness: 0.15,
+            metalness: 0.05,
+          });
+        } else {
+          // الكرة البيضاء، السوداء، والكرات السادة (1-7) تبقى بلون كامل مصمت
+          ballMat = new THREE.MeshStandardMaterial({
+            color: ball.color || "#ffffff",
+            roughness: 0.15,
+            metalness: 0.05,
+          });
+        }
+
         const mesh = new THREE.Mesh(ballGeometry, ballMat);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -452,7 +477,7 @@ export default function App() {
 
     renderer.domElement.addEventListener("pointerdown", handlePointerAim);
     renderer.domElement.addEventListener("pointermove", (e) => {
-      if (e.buttons === 1) handlePointerAim(e); // التوجيه بالسحب المباشر
+      if (e.buttons === 1) handlePointerAim(e);
     });
 
     // 7. الحلقة الأساسية للمحاكاة والرسم (Animation & Physics Step Loop)
@@ -496,7 +521,7 @@ export default function App() {
         setStats(getStats(world));
       }
 
-      // ج) الحسابات الفيزيائية الدقيقة بخطوات ثابتة (Substepping) المطابقة تماماً للمحرك الأصلي
+      // ج) الحسابات الفيزيائية الدقيقة بخطوات ثابتة (Substepping)
       const frameDt = Math.min(delta, MAX_FRAME_DT);
       physicsAccumulator += frameDt;
 
@@ -548,7 +573,6 @@ export default function App() {
         const startOffset = BALL_RADIUS + 0.04;
         const guideY = BALL_Y + 0.005;
 
-        // مطابقة موضع خط الهدف وزاويته وحجمه
         aimGuideGroup.position.set(
           cueBall.position.x,
           guideY,
@@ -559,7 +583,6 @@ export default function App() {
         guideCylinder.position.set(startOffset + length / 2, 0, 0);
         guideCone.position.set(startOffset + length + 0.035, 0, 0);
 
-        // محاكاة عملية سحب العصا للخلف بحسب قوة الضربة
         const pullBack = 0.12 + (currentInputs.power / 100) * 0.26;
         cueStickGroup.position.set(
           cueBall.position.x,
@@ -581,14 +604,12 @@ export default function App() {
         setStats(currentStats);
       }
 
-      // تحديث الكاميرا والرسم الفعلي
       camera.lookAt(0, 0, 0);
       renderer.render(scene, camera);
     };
 
     animate();
 
-    // دالة مرنة لمعالجة التغير التلقائي في حجم نافذة المتصفح لعدم تشويه الأبعاد الرسومية
     const handleResize = () => {
       if (!containerRef.current) return;
       const w = containerRef.current.clientWidth;
@@ -599,7 +620,7 @@ export default function App() {
     };
     window.addEventListener("resize", handleResize);
 
-    // 8. تنظيف الذاكرة وإلغاء المراجع (Cleanup Strategy) عند تدمير المكون لمنع تضخم الـ VRAM
+    // 8. تنظيف الذاكرة وإلغاء المراجع (Cleanup Strategy)
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
@@ -607,7 +628,7 @@ export default function App() {
         containerRef.current.removeChild(renderer.domElement);
       }
 
-      // التخلص التلقائي من الـ Geometries والـ Materials لحماية كارت الشاشة
+      // التخلص التلقائي لحماية الـ VRAM
       ballGeometry.dispose();
       legGeometry.dispose();
       legMaterial.dispose();
@@ -645,7 +666,6 @@ export default function App() {
     <main className="app-shell">
       <Scoreboard stats={stats} />
       <div className="layout">
-        {/* حاوية الرسم ثلاثي الأبعاد البديلة لـ Canvas الخاص بـ Fiber */}
         <section
           className="canvas-card"
           aria-label="مشهد البلياردو ثلاثي الأبعاد"
