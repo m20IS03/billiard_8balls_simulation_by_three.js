@@ -615,7 +615,7 @@ scene.add(pMesh);
       const camX = Math.sin(camAngle) * camDist;
       const camZ = Math.cos(camAngle) * camDist;
 
-      camera.position.set(camX, 2.3, camZ); // ارتفاع 2.3 متر ممتاز لرؤية كامل الطاولة والكرات
+      camera.position.set(camX, 1.8, camZ); // ارتفاع 1.8 متر ممتاز لرؤية كامل الطاولة والكرات
       camera.lookAt(0, 0, 0); // تركيز عدسة النظر بشكل دائم نحو المركز الأساسي للطاولة
       // ----------------------------------------------------------------------------------
 

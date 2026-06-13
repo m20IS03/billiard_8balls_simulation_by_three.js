@@ -656,8 +656,10 @@ export function resolveBallCollisions(world) {
   const balls = world.balls;
   const minDistance = BALL_RADIUS * 2;
   const minDistanceSq = minDistance * minDistance;
-  const slop = 0.0002;
-  const percent = 0.8;
+  
+  // 💡 فرض الفصل الكامل الفوري بنسبة 100% لكسر حلقة التداخل التراكمي نهائياً
+  const slop = 0.0;
+  const percent = 1.0;
 
   for (let i = 0; i < balls.length; i += 1) {
     for (let j = i + 1; j < balls.length; j += 1) {
@@ -723,7 +725,14 @@ export function resolveBallCollisions(world) {
       const rvz = b.velocity.z - a.velocity.z;
       const relNormal = rvx * nx + rvy * ny + rvz * nz;
 
-      if (relNormal >= 0) continue;
+      if (relNormal >= 0) {
+        // إذا تم فصلهما وهما يبتعدان بالفعل، نتأكد من تحديث حالتهما الحركية لضمان الاستقرار
+        if (!use3D) {
+          updateMotionState(a);
+          updateMotionState(b);
+        }
+        continue;
+      }
 
       if (relNormal < -0.05) {
         world.collisions += 1;
@@ -768,8 +777,14 @@ export function resolveBallCollisions(world) {
       const vRelT = (contactB.x - contactA.x) * tx + (contactB.z - contactA.z) * tz;
 
       const tangentialDenominator = invMassA + invMassB + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA;
-      const TANGENTIAL_RESTITUTION = 0.15;
-      const tangentImpulse = (-(1 + TANGENTIAL_RESTITUTION) * vRelT) / tangentialDenominator;
+      
+      // 💡 تعديل جوهري: التخلص من المعامل العشوائي TANGENTIAL_RESTITUTION وحساب الاندفاع المماسي النقي
+      const rawTangentImpulse = (-vRelT) / tangentialDenominator;
+      
+      // تطبيق قانون كولوم الحقيقي للاحتكاك الديناميكي (حصر القوة المماسية بناءً على قوة الاندفاع العمودي)
+      const MU_BALLS = 0.12; // معامل الاحتكاك الطبيعي لأسطح كرات البلياردو
+      const maxFriction = MU_BALLS * impulseMagnitude;
+      const tangentImpulse = Math.max(-maxFriction, Math.min(maxFriction, rawTangentImpulse));
 
       a.velocity.x -= tx * tangentImpulse * invMassA;
       a.velocity.z -= tz * tangentImpulse * invMassA;
