@@ -1,5 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   BALL_RADIUS,
@@ -15,11 +14,12 @@ import {
   TABLE_WIDTH,
   areAnyBallsMoving,
   getStats,
-  isBallMoving,
   makeWorld,
   shootCueBall,
   stepWorld,
 } from "./physics.js";
+
+// مكون لوحة النتائج (Scoreboard) الأصلي متطابق تماماً
 function Scoreboard({ stats }) {
   const p1Group = stats.playerGroups?.[1];
   const p2Group = stats.playerGroups?.[2];
@@ -87,379 +87,6 @@ function Scoreboard({ stats }) {
     </div>
   );
 }
-function Table({ onAimAtPoint }) {
-  const railThickness = 0.1;
-  const railHeight = 0.075;
-  const railY = TABLE_HEIGHT / 2 + railHeight / 2;
-
-  // إحداثيات أقدام الطاولة الأربعة بناءً على الطول والعرض
-  const legX = TABLE_WIDTH / 2 - 0.15;
-  const legZ = TABLE_DEPTH / 2 - 0.15;
-  const legHeight = 0.75; // طول القدم المناسب للارتفاع
-  const legY = -0.065 - legHeight / 2; // وضع القدم تحت قاعدة الطاولة مباشرة
-
-  function handlePointer(event) {
-    event.stopPropagation();
-    if (onAimAtPoint) onAimAtPoint(event.point);
-  }
-
-  return (
-    <group>
-      {/* قاعدة الطاولة الخشبية */}
-      <mesh position={[0, -0.065, 0]} receiveShadow>
-        <boxGeometry args={[TABLE_WIDTH + 0.32, 0.13, TABLE_DEPTH + 0.32]} />
-        <meshStandardMaterial color="#5b341e" roughness={0.72} />
-      </mesh>
-
-      {/* أقدام الطاولة الأربعة */}
-      <mesh position={[-legX, legY, -legZ]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.08, 0.05, legHeight, 16]} />
-        <meshStandardMaterial color="#422312" roughness={0.8} />
-      </mesh>
-      <mesh position={[legX, legY, -legZ]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.08, 0.05, legHeight, 16]} />
-        <meshStandardMaterial color="#422312" roughness={0.8} />
-      </mesh>
-      <mesh position={[-legX, legY, legZ]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.08, 0.05, legHeight, 16]} />
-        <meshStandardMaterial color="#422312" roughness={0.8} />
-      </mesh>
-      <mesh position={[legX, legY, legZ]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.08, 0.05, legHeight, 16]} />
-        <meshStandardMaterial color="#422312" roughness={0.8} />
-      </mesh>
-
-      {/* سطح القماش الأخضر */}
-      <mesh
-        position={[0, 0, 0]}
-        receiveShadow
-        onPointerMove={handlePointer}
-        onPointerDown={handlePointer}
-      >
-        <boxGeometry args={[TABLE_WIDTH, TABLE_HEIGHT, TABLE_DEPTH]} />
-        <meshStandardMaterial color="#0f7a43" roughness={0.92} />
-      </mesh>
-
-      {/* الحواف الجانبية */}
-      <mesh
-        position={[0, railY, -TABLE_DEPTH / 2 - railThickness / 2]}
-        castShadow
-      >
-        <boxGeometry
-          args={[TABLE_WIDTH + railThickness * 2, railHeight, railThickness]}
-        />
-        <meshStandardMaterial color="#6b3f24" roughness={0.74} />
-      </mesh>
-
-      <mesh
-        position={[0, railY, TABLE_DEPTH / 2 + railThickness / 2]}
-        castShadow
-      >
-        <boxGeometry
-          args={[TABLE_WIDTH + railThickness * 2, railHeight, railThickness]}
-        />
-        <meshStandardMaterial color="#6b3f24" roughness={0.74} />
-      </mesh>
-
-      <mesh
-        position={[-TABLE_WIDTH / 2 - railThickness / 2, railY, 0]}
-        castShadow
-      >
-        <boxGeometry
-          args={[railThickness, railHeight, TABLE_DEPTH + railThickness * 2]}
-        />
-        <meshStandardMaterial color="#6b3f24" roughness={0.74} />
-      </mesh>
-
-      <mesh
-        position={[TABLE_WIDTH / 2 + railThickness / 2, railY, 0]}
-        castShadow
-      >
-        <boxGeometry
-          args={[railThickness, railHeight, TABLE_DEPTH + railThickness * 2]}
-        />
-        <meshStandardMaterial color="#6b3f24" roughness={0.74} />
-      </mesh>
-
-      {/* الجيوب الستة */}
-      {POCKETS.map((pocket, index) => (
-        <mesh
-          key={index}
-          position={[pocket.x, TABLE_HEIGHT / 2 + 0.004, pocket.z]}
-        >
-          <cylinderGeometry args={[POCKET_RADIUS, POCKET_RADIUS, 0.012, 64]} />
-          <meshStandardMaterial color="#020617" roughness={0.55} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-function AimGuide({ cuePos, angleDeg, power, visible }) {
-  if (!visible) return null;
-
-  const angle = THREE.MathUtils.degToRad(angleDeg);
-  const length = 0.22 + (power / 100) * 0.48;
-  const startOffset = BALL_RADIUS + 0.04;
-  const guideY = BALL_Y + 0.005;
-
-  return (
-    <group position={[cuePos.x, guideY, cuePos.z]} rotation={[0, -angle, 0]}>
-      <mesh
-        position={[startOffset + length / 2, 0, 0]}
-        rotation={[0, 0, -Math.PI / 2]}
-      >
-        <cylinderGeometry args={[0.0055, 0.0055, length, 18]} />
-        <meshStandardMaterial
-          color="#f8fafc"
-          emissive="#334155"
-          emissiveIntensity={0.3}
-        />
-      </mesh>
-
-      <mesh
-        position={[startOffset + length + 0.035, 0, 0]}
-        rotation={[0, 0, -Math.PI / 2]}
-      >
-        <coneGeometry args={[0.022, 0.06, 28]} />
-        <meshStandardMaterial
-          color="#f8fafc"
-          emissive="#334155"
-          emissiveIntensity={0.3}
-        />
-      </mesh>
-    </group>
-  );
-}
-
-function CueStick({ cuePos, angleDeg, power, visible }) {
-  if (!visible) return null;
-
-  const angle = THREE.MathUtils.degToRad(angleDeg);
-  const pullBack = 0.12 + (power / 100) * 0.26;
-  const cueLength = 0.72;
-  const cueY = BALL_Y + 0.005;
-
-  return (
-    <group position={[cuePos.x, cueY, cuePos.z]} rotation={[0, -angle, 0]}>
-      <mesh
-        position={[-pullBack - cueLength / 2, 0, 0]}
-        rotation={[0, 0, Math.PI / 2]}
-      >
-        <cylinderGeometry args={[0.01, 0.016, cueLength, 24]} />
-        <meshStandardMaterial color="#d6a15d" roughness={0.62} />
-      </mesh>
-      <mesh position={[-pullBack - 0.025, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.006, 0.006, 0.05, 18]} />
-        <meshStandardMaterial color="#e5e7eb" roughness={0.5} />
-      </mesh>
-    </group>
-  );
-}
-
-function BallMesh({ ball, geometry, registerMesh }) {
-  const meshRef = useRef();
-
-  React.useEffect(() => {
-    if (ball && registerMesh) {
-      registerMesh(ball.id, meshRef.current);
-    }
-    return () => {
-      if (ball && registerMesh) {
-        registerMesh(ball.id, null);
-      }
-    };
-  }, [ball, registerMesh]);
-
-  if (!ball) return null;
-
-  const color = ball.color || "#ffffff";
-
-  return (
-    <mesh ref={meshRef} geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial color={color} roughness={0.15} metalness={0.05} />
-    </mesh>
-  );
-}
-
-function BilliardsScene({
-  power,
-  angleDeg,
-  cueContactY,
-  cueContactX,
-  cueElevationDeg,
-  hitSignal,
-  resetSignal,
-  onStats,
-  onAimAngleChange,
-}) {
-  const worldRef = useRef(makeWorld());
-  const meshRefs = useRef(new Map());
-  const lastHitSignal = useRef(hitSignal);
-  const lastResetSignal = useRef(resetSignal);
-  const accumulator = useRef(0);
-  const statsTimer = useRef(0);
-
-  const [viewState, setViewState] = useState({
-    canShoot: true,
-    cuePos: CUE_START.clone(),
-  });
-
-  const ballGeometry = useMemo(
-    () => new THREE.SphereGeometry(BALL_RADIUS, 32, 32),
-    [],
-  );
-
-  function registerMesh(id, mesh) {
-    const ball = worldRef.current.balls.find(
-      (candidate) => candidate.id === id,
-    );
-    if (ball) {
-      ball.mesh = mesh || null;
-    }
-    if (mesh) {
-      meshRefs.current.set(id, mesh);
-    } else {
-      meshRefs.current.delete(id);
-    }
-  }
-
-  function syncMeshes(dt) {
-    for (const ball of worldRef.current.balls) {
-      const mesh = meshRefs.current.get(ball.id);
-      if (!mesh) continue;
-
-      mesh.visible = ball.active;
-      if (!ball.active) continue;
-
-      mesh.position.set(ball.position.x, ball.position.y, ball.position.z);
-
-      if (dt > 0 && (ball.velocity.x !== 0 || ball.velocity.z !== 0)) {
-        mesh.rotation.x += ball.omega.x * dt;
-        mesh.rotation.y += ball.omega.y * dt;
-        mesh.rotation.z += ball.omega.z * dt;
-      }
-    }
-  }
-
-  function publishStats() {
-    const stats = getStats(worldRef.current);
-    const cue = worldRef.current.balls[0];
-    const cuePos = cue && cue.active ? cue.position.clone() : CUE_START.clone();
-
-    onStats(stats);
-    setViewState({ canShoot: stats.canShoot, cuePos });
-  }
-
-  function resetSimulation() {
-    worldRef.current = makeWorld();
-    accumulator.current = 0;
-    statsTimer.current = 0;
-    syncMeshes(0);
-    publishStats();
-  }
-
-  function aimFromPoint(point) {
-    const world = worldRef.current;
-    const cue = world.balls[0];
-
-    if (!cue || !cue.active || areAnyBallsMoving(world.balls)) return;
-
-    const dx = point.x - cue.position.x;
-    const dz = point.z - cue.position.z;
-
-    if (dx * dx + dz * dz < BALL_RADIUS * BALL_RADIUS * 4) return;
-
-    const nextAngle = THREE.MathUtils.radToDeg(Math.atan2(dz, dx));
-    onAimAngleChange(Number(nextAngle.toFixed(1)));
-  }
-
-  useFrame((state, delta) => {
-    state.camera.lookAt(0, 0, 0);
-
-    if (resetSignal !== lastResetSignal.current) {
-      lastResetSignal.current = resetSignal;
-      resetSimulation();
-    }
-
-    if (hitSignal !== lastHitSignal.current) {
-      lastHitSignal.current = hitSignal;
-      const didShoot = shootCueBall(
-        worldRef.current,
-        power,
-        angleDeg,
-        cueContactY,
-        cueContactX,
-        cueElevationDeg,
-      );
-
-      if (didShoot) {
-        const cue = worldRef.current.balls[0];
-        const cuePos =
-          cue && cue.active ? cue.position.clone() : CUE_START.clone();
-
-        setViewState({ canShoot: false, cuePos });
-        onStats(getStats(worldRef.current));
-      }
-    }
-
-    const frameDt = Math.min(delta, MAX_FRAME_DT);
-    accumulator.current += frameDt;
-
-    let substeps = 0;
-    while (accumulator.current >= FIXED_DT && substeps < MAX_SUBSTEPS) {
-      stepWorld(worldRef.current, FIXED_DT);
-      accumulator.current -= FIXED_DT;
-      substeps += 1;
-    }
-
-    if (substeps === MAX_SUBSTEPS) {
-      accumulator.current = 0;
-    }
-
-    syncMeshes(frameDt);
-
-    statsTimer.current += frameDt;
-    if (statsTimer.current >= 0.12) {
-      statsTimer.current = 0;
-      publishStats();
-    }
-  });
-
-  const balls = worldRef.current.balls;
-
-  return (
-    <>
-      <color attach="background" args={["#07111f"]} />
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[0.4, 2.4, 1.1]} intensity={1.7} castShadow />
-      <pointLight position={[-1.3, 1.1, -0.8]} intensity={0.6} />
-
-      <Table onAimAtPoint={aimFromPoint} />
-
-      <AimGuide
-        cuePos={viewState.cuePos}
-        angleDeg={angleDeg}
-        power={power}
-        visible={viewState.canShoot}
-      />
-      <CueStick
-        cuePos={viewState.cuePos}
-        angleDeg={angleDeg}
-        power={power}
-        visible={viewState.canShoot}
-      />
-
-      {balls.map((ball) => (
-        <BallMesh
-          key={ball.id}
-          ball={ball}
-          geometry={ballGeometry}
-          registerMesh={registerMesh}
-        />
-      ))}
-    </>
-  );
-}
 
 function Stat({ title, value }) {
   return (
@@ -471,6 +98,10 @@ function Stat({ title, value }) {
 }
 
 export default function App() {
+  // المرجع الخاص بحاوية الرسم ثلاثي الأبعاد
+  const containerRef = useRef(null);
+
+  // حالات التحكم بالواجهة الرسومية عبر React
   const [power, setPower] = useState(55);
   const [angleDeg, setAngleDeg] = useState(0);
   const [cueContactY, setCueContactY] = useState(0);
@@ -478,7 +109,472 @@ export default function App() {
   const [cueElevationDeg, setCueElevationDeg] = useState(0);
   const [hitSignal, setHitSignal] = useState(0);
   const [resetSignal, setResetSignal] = useState(0);
-  const [stats, setStats] = useState(getStats(makeWorld()));
+  const [stats, setStats] = useState(() => getStats(makeWorld()));
+
+  // مرجع لحفظ أحدث قيم المدخلات لتجنب الاستدعاءات المغلقة القديمة (Stale Closures) داخل حلقة الـ Animation
+  const inputsRef = useRef({
+    power,
+    angleDeg,
+    cueContactY,
+    cueContactX,
+    cueElevationDeg,
+    hitSignal,
+    resetSignal,
+  });
+
+  useEffect(() => {
+    inputsRef.current = {
+      power,
+      angleDeg,
+      cueContactY,
+      cueContactX,
+      cueElevationDeg,
+      hitSignal,
+      resetSignal,
+    };
+  }, [
+    power,
+    angleDeg,
+    cueContactY,
+    cueContactX,
+    cueElevationDeg,
+    hitSignal,
+    resetSignal,
+  ]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // أبعاد لوحة الرسم الافتراضية
+    const width = containerRef.current.clientWidth || 800;
+    const height = containerRef.current.clientHeight || 550;
+
+    // 1. إعداد المشهد والكاميرا والمصيّر (Scene, Camera, Renderer)
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#07111f");
+
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.01, 40);
+    camera.position.set(0, 2.5, 2.05);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    containerRef.current.appendChild(renderer.domElement);
+
+    // 2. منظومة الإضاءة والظلال الكاملة المطابقة للأصل
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.7);
+    dirLight.position.set(0.4, 2.4, 1.1);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 10;
+    scene.add(dirLight);
+
+    const pointLight = new THREE.PointLight(0xffffff, 0.6);
+    pointLight.position.set(-1.3, 1.1, -0.8);
+    scene.add(pointLight);
+
+    // 3. بناء مجسمات طاولة البلياردو (Table Geometry & Materials)
+    const tableGroup = new THREE.Group();
+    const railThickness = 0.1;
+    const railHeight = 0.075;
+    const railY = TABLE_HEIGHT / 2 + railHeight / 2;
+    const legX = TABLE_WIDTH / 2 - 0.15;
+    const legZ = TABLE_DEPTH / 2 - 0.15;
+    const legHeight = 0.75;
+    const legY = -0.065 - legHeight / 2;
+
+    // قاعدة الطاولة الخشبية
+    const baseMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(TABLE_WIDTH + 0.32, 0.13, TABLE_DEPTH + 0.32),
+      new THREE.MeshStandardMaterial({ color: "#5b341e", roughness: 0.72 }),
+    );
+    baseMesh.position.set(0, -0.065, 0);
+    baseMesh.receiveShadow = true;
+    tableGroup.add(baseMesh);
+
+    // الأرجل الأربعة
+    const legGeometry = new THREE.CylinderGeometry(0.08, 0.05, legHeight, 16);
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: "#422312",
+      roughness: 0.8,
+    });
+    const legPositions = [
+      [-legX, legY, -legZ],
+      [legX, legY, -legZ],
+      [-legX, legY, legZ],
+      [legX, legY, legZ],
+    ];
+    legPositions.forEach(([x, y, z]) => {
+      const legMesh = new THREE.Mesh(legGeometry, legMaterial);
+      legMesh.position.set(x, y, z);
+      legMesh.castShadow = true;
+      legMesh.receiveShadow = true;
+      tableGroup.add(legMesh);
+    });
+
+    // سطح اللباد الأخضر المقاوم للأشعة وعنصر التوجيه بالماوس
+    const clothMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(TABLE_WIDTH, TABLE_HEIGHT, TABLE_DEPTH),
+      new THREE.MeshStandardMaterial({ color: "#0f7a43", roughness: 0.92 }),
+    );
+    clothMesh.receiveShadow = true;
+    tableGroup.add(clothMesh);
+
+    // الباندات / الحواف الجانبية للطاولة
+    const railMaterial = new THREE.MeshStandardMaterial({
+      color: "#6b3f24",
+      roughness: 0.74,
+    });
+    const r1 = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        TABLE_WIDTH + railThickness * 2,
+        railHeight,
+        railThickness,
+      ),
+      railMaterial,
+    );
+    r1.position.set(0, railY, -TABLE_DEPTH / 2 - railThickness / 2);
+    r1.castShadow = true;
+    tableGroup.add(r1);
+
+    const r2 = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        TABLE_WIDTH + railThickness * 2,
+        railHeight,
+        railThickness,
+      ),
+      railMaterial,
+    );
+    r2.position.set(0, railY, TABLE_DEPTH / 2 + railThickness / 2);
+    r2.castShadow = true;
+    tableGroup.add(r2);
+
+    const r3 = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        railThickness,
+        railHeight,
+        TABLE_DEPTH + railThickness * 2,
+      ),
+      railMaterial,
+    );
+    r3.position.set(-TABLE_WIDTH / 2 - railThickness / 2, railY, 0);
+    r3.castShadow = true;
+    tableGroup.add(r3);
+
+    const r4 = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        railThickness,
+        railHeight,
+        TABLE_DEPTH + railThickness * 2,
+      ),
+      railMaterial,
+    );
+    r4.position.set(TABLE_WIDTH / 2 + railThickness / 2, railY, 0);
+    r4.castShadow = true;
+    tableGroup.add(r4);
+
+    // الجيوب الستة
+    const pocketGeometry = new THREE.CylinderGeometry(
+      POCKET_RADIUS,
+      POCKET_RADIUS,
+      0.012,
+      32,
+    );
+    const pocketMaterial = new THREE.MeshStandardMaterial({
+      color: "#020617",
+      roughness: 0.55,
+    });
+    POCKETS.forEach((pocket) => {
+      const pMesh = new THREE.Mesh(pocketGeometry, pocketMaterial);
+      pMesh.position.set(pocket.x, TABLE_HEIGHT / 2 + 0.004, pocket.z);
+      tableGroup.add(pMesh);
+    });
+
+    scene.add(tableGroup);
+
+    // 4. بناء خط التصويب المساعد (AimGuide) والعصا (CueStick) كمجسمات منفصلة ديناميكية
+    const aimGuideGroup = new THREE.Group();
+    const guideCylinder = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0055, 0.0055, 1, 18), // طول افتراضي 1 يتم عمل scale له لاحقاً لحفظ الأداء
+      new THREE.MeshStandardMaterial({
+        color: "#f8fafc",
+        emissive: "#334155",
+        emissiveIntensity: 0.3,
+      }),
+    );
+    guideCylinder.rotation.z = -Math.PI / 2;
+    aimGuideGroup.add(guideCylinder);
+
+    const guideCone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.022, 0.06, 28),
+      new THREE.MeshStandardMaterial({
+        color: "#f8fafc",
+        emissive: "#334155",
+        emissiveIntensity: 0.3,
+      }),
+    );
+    guideCone.rotation.z = -Math.PI / 2;
+    aimGuideGroup.add(guideCone);
+    scene.add(aimGuideGroup);
+
+    const cueStickGroup = new THREE.Group();
+    const cueLength = 0.72;
+    const stickMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.01, 0.016, cueLength, 24),
+      new THREE.MeshStandardMaterial({ color: "#d6a15d", roughness: 0.62 }),
+    );
+    stickMesh.rotation.z = Math.PI / 2;
+    cueStickGroup.add(stickMesh);
+
+    const tipMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.006, 0.05, 18),
+      new THREE.MeshStandardMaterial({ color: "#e5e7eb", roughness: 0.5 }),
+    );
+    tipMesh.rotation.z = Math.PI / 2;
+    cueStickGroup.add(tipMesh);
+    scene.add(cueStickGroup);
+
+    // 5. إدارة وتهيئة الكرات ثلاثية الأبعاد وربطها بالمحرك الفيزيائي المستورد
+    let world = makeWorld();
+    const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
+    const ballVisuals = [];
+
+    const initializeBallMeshes = () => {
+      ballVisuals.forEach((v) => scene.remove(v.mesh));
+      ballVisuals.length = 0;
+
+      world.balls.forEach((ball) => {
+        const ballMat = new THREE.MeshStandardMaterial({
+          color: ball.color || "#ffffff",
+          roughness: 0.15,
+          metalness: 0.05,
+        });
+        const mesh = new THREE.Mesh(ballGeometry, ballMat);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+        ballVisuals.push({ id: ball.id, ballData: ball, mesh: mesh });
+      });
+    };
+
+    initializeBallMeshes();
+
+    // 6. تتبع حركة الماوس واللمس لتغيير الزاوية ديناميكياً (Raycasting)
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const handlePointerAim = (event) => {
+      if (areAnyBallsMoving(world.balls)) return;
+      const cueBall = world.balls[0];
+      if (!cueBall || !cueBall.active) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(clothMesh);
+
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const dx = point.x - cueBall.position.x;
+        const dz = point.z - cueBall.position.z;
+
+        if (dx * dx + dz * dz < BALL_RADIUS * BALL_RADIUS * 4) return;
+
+        const nextAngle = THREE.MathUtils.radToDeg(Math.atan2(dz, dx));
+        setAngleDeg(Number(nextAngle.toFixed(1)));
+      }
+    };
+
+    renderer.domElement.addEventListener("pointerdown", handlePointerAim);
+    renderer.domElement.addEventListener("pointermove", (e) => {
+      if (e.buttons === 1) handlePointerAim(e); // التوجيه بالسحب المباشر
+    });
+
+    // 7. الحلقة الأساسية للمحاكاة والرسم (Animation & Physics Step Loop)
+    let lastHitSignal = inputsRef.current.hitSignal;
+    let lastResetSignal = inputsRef.current.resetSignal;
+    let physicsAccumulator = 0;
+    let uiStatsTimer = 0;
+    let lastTime = performance.now();
+    let animationFrameId;
+
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+
+      const currentInputs = inputsRef.current;
+
+      // أ) معالجة إشارة إعادة الضبط
+      if (currentInputs.resetSignal !== lastResetSignal) {
+        lastResetSignal = currentInputs.resetSignal;
+        world = makeWorld();
+        initializeBallMeshes();
+        physicsAccumulator = 0;
+        uiStatsTimer = 0;
+        setStats(getStats(world));
+      }
+
+      // ب) معالجة إشارة ضربة الكرة البيضاء
+      if (currentInputs.hitSignal !== lastHitSignal) {
+        lastHitSignal = currentInputs.hitSignal;
+        shootCueBall(
+          world,
+          currentInputs.power,
+          currentInputs.angleDeg,
+          currentInputs.cueContactY,
+          currentInputs.cueContactX,
+          currentInputs.cueElevationDeg,
+        );
+        setStats(getStats(world));
+      }
+
+      // ج) الحسابات الفيزيائية الدقيقة بخطوات ثابتة (Substepping) المطابقة تماماً للمحرك الأصلي
+      const frameDt = Math.min(delta, MAX_FRAME_DT);
+      physicsAccumulator += frameDt;
+
+      let substeps = 0;
+      while (physicsAccumulator >= FIXED_DT && substeps < MAX_SUBSTEPS) {
+        stepWorld(world, FIXED_DT);
+        physicsAccumulator -= FIXED_DT;
+        substeps += 1;
+      }
+      if (substeps === MAX_SUBSTEPS) physicsAccumulator = 0;
+
+      // د) تحديث مواقع ومصفوفات دوران الكرات هندسياً على الشاشة
+      ballVisuals.forEach(({ ballData, mesh }) => {
+        mesh.visible = ballData.active;
+        if (ballData.active) {
+          mesh.position.set(
+            ballData.position.x,
+            ballData.position.y,
+            ballData.position.z,
+          );
+
+          // حساب زاوية الدحرجة والالتفاف البصري للكرة بناءً على متجه السرعة الزاوية (omega) من الفيزياء
+          if (
+            frameDt > 0 &&
+            (ballData.velocity.x !== 0 || ballData.velocity.z !== 0)
+          ) {
+            mesh.rotation.x += ballData.omega.x * frameDt;
+            mesh.rotation.y += ballData.omega.y * frameDt;
+            mesh.rotation.z += ballData.omega.z * frameDt;
+          }
+        }
+      });
+
+      // هـ) تحديث مؤشرات خط التوجيه وعصا البلياردو بصرياً
+      const currentStats = getStats(world);
+      const cueBall = world.balls[0];
+      const isMoving = ballVisuals.some(
+        (v) =>
+          v.ballData.active &&
+          (v.ballData.velocity.x !== 0 || v.ballData.velocity.z !== 0),
+      );
+
+      if (cueBall && cueBall.active && currentStats.canShoot && !isMoving) {
+        aimGuideGroup.visible = true;
+        cueStickGroup.visible = true;
+
+        const angle = THREE.MathUtils.degToRad(currentInputs.angleDeg);
+        const length = 0.22 + (currentInputs.power / 100) * 0.48;
+        const startOffset = BALL_RADIUS + 0.04;
+        const guideY = BALL_Y + 0.005;
+
+        // مطابقة موضع خط الهدف وزاويته وحجمه
+        aimGuideGroup.position.set(
+          cueBall.position.x,
+          guideY,
+          cueBall.position.z,
+        );
+        aimGuideGroup.rotation.set(0, -angle, 0);
+        guideCylinder.scale.set(1, length, 1);
+        guideCylinder.position.set(startOffset + length / 2, 0, 0);
+        guideCone.position.set(startOffset + length + 0.035, 0, 0);
+
+        // محاكاة عملية سحب العصا للخلف بحسب قوة الضربة
+        const pullBack = 0.12 + (currentInputs.power / 100) * 0.26;
+        cueStickGroup.position.set(
+          cueBall.position.x,
+          guideY,
+          cueBall.position.z,
+        );
+        cueStickGroup.rotation.set(0, -angle, 0);
+        stickMesh.position.set(-pullBack - cueLength / 2, 0, 0);
+        tipMesh.position.set(-pullBack - 0.025, 0, 0);
+      } else {
+        aimGuideGroup.visible = false;
+        cueStickGroup.visible = false;
+      }
+
+      // و) إرسال الإحصائيات الدورية لتحديث واجهة مستخدم React
+      uiStatsTimer += frameDt;
+      if (uiStatsTimer >= 0.12) {
+        uiStatsTimer = 0;
+        setStats(currentStats);
+      }
+
+      // تحديث الكاميرا والرسم الفعلي
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    // دالة مرنة لمعالجة التغير التلقائي في حجم نافذة المتصفح لعدم تشويه الأبعاد الرسومية
+    const handleResize = () => {
+      if (!containerRef.current) return;
+      const w = containerRef.current.clientWidth;
+      const h = containerRef.current.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener("resize", handleResize);
+
+    // 8. تنظيف الذاكرة وإلغاء المراجع (Cleanup Strategy) عند تدمير المكون لمنع تضخم الـ VRAM
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("resize", handleResize);
+      if (containerRef.current && renderer.domElement) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
+
+      // التخلص التلقائي من الـ Geometries والـ Materials لحماية كارت الشاشة
+      ballGeometry.dispose();
+      legGeometry.dispose();
+      legMaterial.dispose();
+      railMaterial.dispose();
+      pocketGeometry.dispose();
+      pocketMaterial.dispose();
+      baseMesh.geometry.dispose();
+      baseMesh.material.dispose();
+      clothMesh.geometry.dispose();
+      clothMesh.material.dispose();
+      guideCylinder.geometry.dispose();
+      guideCylinder.material.dispose();
+      guideCone.geometry.dispose();
+      stickMesh.geometry.dispose();
+      stickMesh.material.dispose();
+      tipMesh.geometry.dispose();
+      renderer.dispose();
+    };
+  }, []);
 
   const cueContactMeaning =
     cueContactY > 0.05
@@ -495,44 +591,23 @@ export default function App() {
 
   return (
     <main className="app-shell">
+      <Scoreboard stats={stats} />
       <div className="layout">
+        {/* حاوية الرسم ثلاثي الأبعاد البديلة لـ Canvas الخاص بـ Fiber */}
         <section
           className="canvas-card"
           aria-label="مشهد البلياردو ثلاثي الأبعاد"
-        >
-          <Canvas
-            shadows
-            dpr={[1, 2]}
-            /* تحديث موضع الكاميرا (position):
-               X = 0 للبقاء في منتصف الجانب الطويل للطاولة تماماً.
-               Y = 2.5 الارتفاع العمودي المناسب.
-               Z = 2.05 الإزاحة للخلف لتحقيق زاوية ميل دقيقة تقارب 60 درجة بالتعاون مع lookAt(0,0,0).
-               تحديث مجال الرؤية (fov):
-               تم رفعه إلى 50 لاستيعاب أطراف الطاولة الطويلة داخل الكادر بعد خفض الكاميرا.
-            */
-            camera={{ position: [0, 2.5, 2.05], fov: 50, near: 0.01, far: 40 }}
-          >
-            <BilliardsScene
-              power={power}
-              angleDeg={angleDeg}
-              cueContactY={cueContactY}
-              cueContactX={cueContactX}
-              cueElevationDeg={cueElevationDeg}
-              hitSignal={hitSignal}
-              resetSignal={resetSignal}
-              onStats={setStats}
-              onAimAngleChange={setAngleDeg}
-            />
-          </Canvas>
-        </section>
+          ref={containerRef}
+        ></section>
 
         <aside className="side-panel">
           <section className="panel-section">
-            <p className="eyebrow">Three.js + فيزياء يدوية</p>
+            <p className="eyebrow">Pure Three.js + فيزياء يدوية</p>
             <h1>محاكاة بلياردو 3D</h1>
             <p className="description">
-              العرض ثلاثي الأبعاد يتم عبر Three.js، أما الحركة والتصادمات
-              والاحتكاك فهي مكتوبة يدويًا بدون محرك فيزياء جاهز.
+              العرض ثلاثي الأبعاد يتم عبر مكتبة Three.js الصرفة مباشرةً وبشكل
+              متزامن، أما الحركة والتصادمات والاحتكاك فهي محسوبة برمجياً ومكتوبة
+              يدويًا لضمان أعلى أداء ممكن.
             </p>
           </section>
 
@@ -547,7 +622,7 @@ export default function App() {
                 min="5"
                 max="100"
                 value={power}
-                onChange={(event) => setPower(Number(event.target.value))}
+                onChange={(e) => setPower(Number(e.target.value))}
               />
             </label>
 
@@ -561,7 +636,7 @@ export default function App() {
                 min="-180"
                 max="180"
                 value={angleDeg}
-                onChange={(event) => setAngleDeg(Number(event.target.value))}
+                onChange={(e) => setAngleDeg(Number(e.target.value))}
               />
             </label>
 
@@ -578,7 +653,7 @@ export default function App() {
                 max="0.7"
                 step="0.05"
                 value={cueContactY}
-                onChange={(event) => setCueContactY(Number(event.target.value))}
+                onChange={(e) => setCueContactY(Number(e.target.value))}
               />
             </label>
 
@@ -595,7 +670,7 @@ export default function App() {
                 max="0.7"
                 step="0.05"
                 value={cueContactX}
-                onChange={(event) => setCueContactX(Number(event.target.value))}
+                onChange={(e) => setCueContactX(Number(e.target.value))}
               />
             </label>
 
@@ -610,9 +685,7 @@ export default function App() {
                 max="45"
                 step="1"
                 value={cueElevationDeg}
-                onChange={(event) =>
-                  setCueElevationDeg(Number(event.target.value))
-                }
+                onChange={(e) => setCueElevationDeg(Number(e.target.value))}
               />
             </label>
 
@@ -620,22 +693,22 @@ export default function App() {
               <button
                 type="button"
                 disabled={!stats.canShoot}
-                onClick={() => setHitSignal((value) => value + 1)}
+                onClick={() => setHitSignal((v) => v + 1)}
               >
                 اضرب الكرة
               </button>
               <button
                 type="button"
                 className="secondary"
-                onClick={() => setResetSignal((value) => value + 1)}
+                onClick={() => setResetSignal((v) => v + 1)}
               >
                 إعادة ضبط
               </button>
             </div>
 
             <p className="hint">
-              يمكن تغيير الزاوية من الشريط أو بتحريك المؤشر فوق سطح الطاولة
-              عندما تكون الكرات متوقفة.
+              يمكن تغيير الزاوية من الشريط أو بتحريك المؤشر والنقر المباشر فوق
+              سطح الطاولة عندما تكون الكرات متوقفة.
             </p>
           </section>
 
@@ -649,6 +722,15 @@ export default function App() {
               <Stat title="Scratch" value={stats.scratches} />
               <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
             </div>
+          </section>
+
+          <section className="panel-section note">
+            <h2>النموذج الفيزيائي</h2>
+            <p>
+              النموذج يعمل على مستوى أفقي ثنائي الأبعاد داخل مشهد ثلاثي الأبعاد،
+              مع احتكاك دحرجة، معاملات ارتداد، تصحيح تداخل، وخطوة زمنية ثابتة
+              لزيادة استقرار التصادمات.
+            </p>
           </section>
         </aside>
       </div>
