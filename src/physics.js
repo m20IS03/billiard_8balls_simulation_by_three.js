@@ -31,7 +31,7 @@ export const BALL_TANGENTIAL_RESTITUTION = 0.0;
 export const WALL_RESTITUTION = 0.78;
 // Simple cushion friction used only to transfer sidespin during rail collision.
 export const WALL_TANGENTIAL_FRICTION = 0.2;
-export const TABLE_RESTITUTION = 0.5;
+export const TABLE_RESTITUTION = 0.7;
 
 export const STOP_SPEED = 0.012;
 export const SLIP_SPEED_EPSILON = 0.002;
@@ -42,7 +42,7 @@ export const MIN_JUMP_ANGLE_DEG = 0;
 export const MAX_JUMP_ANGLE_DEG = 45;
 
 export const CUE_MIN_SPEED = 0.25;
-export const CUE_MAX_SPEED = 2.9;
+export const CUE_MAX_SPEED = 4.5;
 export const CUE_START = new THREE.Vector3(-0.88, BALL_Y, 0);
 export const RACK_START_X = 0.43;
 
@@ -96,7 +96,7 @@ function makeBall({ id, label, color, x, z }) {
     isCue: id === 0,
     motionState: "stopped",
     isAirborne: false,
-    isFalling: false
+    isFalling: false,
   };
 }
 
@@ -365,7 +365,7 @@ function applySlidingFriction(ball, dt) {
 
   ball.velocity.x += ax * dt;
   ball.velocity.z += az * dt;
-  ball.velocity.y = 0;
+  // ball.velocity.y = 0; // تم تعطيله للسماح بالقفز الحر
 
   // Torque from friction: tau = r x F, where the contact radius is r = (0, -R, 0).
   const torqueX = -BALL_RADIUS * forceZ;
@@ -405,7 +405,7 @@ function applyRollingFriction(ball, dt) {
   const scale = speedAfterFriction / speed;
   ball.velocity.x *= scale;
   ball.velocity.z *= scale;
-  ball.velocity.y = 0;
+  // ball.velocity.y = 0; // تم تعطيله للسماح بالقفز الحر
   ball.motionState = "rolling";
   setPureRollingOmega(ball);
 }
@@ -511,7 +511,7 @@ function tryPocketBall(world, ball) {
     if (distance <= POCKET_RADIUS * 0.85) {
       ball.isFalling = true;
       ball.motionState = "sliding"; // تحويلها للانزلاق لتبدأ بالسقوط
-      
+
       // توجيه سرعة الكرة ببطء نحو مركز الجيب الداخلي لإعطاء تأثير الجاذبية الداخلية
       ball.velocity.x = (pocket.x - ball.position.x) * 2;
       ball.velocity.z = (pocket.z - ball.position.z) * 2;
@@ -847,7 +847,7 @@ export function stepWorld(world, dt) {
       ball.position.z += ball.velocity.z * dt;
 
       // إذا غطست الكرة بالكامل تحت مستوى سطح الطاولة
-      if (ball.position.y < (TABLE_HEIGHT / 2) - ball.radius) {
+      if (ball.position.y < TABLE_HEIGHT / 2 - ball.radius) {
         // احتساب النقاط/الأخطاء وتعطيل الكرة نهائيًا
         pocketBall(world, ball);
         // إعادة تعيين المتغير ليكون جاهزًا عند إعادة توليد الكرة البيضاء لاحقًا
@@ -883,12 +883,15 @@ export function stepWorld(world, dt) {
     }
 
     // 3. تحديث حالات الاحتكاك والدوران المعتادة
-    updateMotionState(ball);
+    // 3. تحديث حالات الاحتكاك والدوران المعتادة (تُطبق فقط إذا كانت الكرة ملامسة لسطح الطاولة وليست طائرة)
+    if (!ball.isAirborne) {
+      updateMotionState(ball);
 
-    if (ball.motionState === "sliding") {
-      applySlidingFriction(ball, dt);
-    } else if (ball.motionState === "rolling") {
-      applyRollingFriction(ball, dt);
+      if (ball.motionState === "sliding") {
+        applySlidingFriction(ball, dt);
+      } else if (ball.motionState === "rolling") {
+        applyRollingFriction(ball, dt);
+      }
     }
 
     applySideSpinCurve(ball, dt);
