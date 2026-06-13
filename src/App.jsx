@@ -288,23 +288,71 @@ export default function App() {
     r4.castShadow = true;
     tableGroup.add(r4);
 
-    // الجيوب الستة
+    // ==========================================
+    // تعديل الجيوب الستة لتبدو ثلاثية الأبعاد وواقعية
+    // ==========================================
+
+    const pocketDepth = 0.06; // عمق الجيب لأسفل (6 سنتيمترات)
+
+    // 1. مجسم فجوة الجيب (جعل الجزء السفلي أضيق قليلاً ليعطي إيحاء بالعمق المخروطي)
     const pocketGeometry = new THREE.CylinderGeometry(
-      POCKET_RADIUS,
-      POCKET_RADIUS,
-      0.012,
-      32,
+      POCKET_RADIUS, // نصف القطر العلوي
+      POCKET_RADIUS * 0.85, // نصف القطر السفلي (أصغر قليلاً للواقعية)
+      pocketDepth, // الارتفاع (العمق الفعلي)
+      32, // النعومة دائرية
     );
+
+    // مادة الجيب: أسود داكن جداً يمتص الضوء
     const pocketMaterial = new THREE.MeshStandardMaterial({
-      color: "#020617",
-      roughness: 0.55,
-    });
-    POCKETS.forEach((pocket) => {
-      const pMesh = new THREE.Mesh(pocketGeometry, pocketMaterial);
-      pMesh.position.set(pocket.x, TABLE_HEIGHT / 2 + 0.004, pocket.z);
-      tableGroup.add(pMesh);
+      color: "#05070f", // أسود قريب من الفراغ
+      roughness: 0.9, // خشن جداً لامتصاص الضوء والظلال
+      metalness: 0.1,
     });
 
+    // 2. مجسم إطار الجيب الواقي (The Rim) - حلقة جلدية تحيط بكل جيب
+    const rimGeometry = new THREE.RingGeometry(
+      POCKET_RADIUS, // نصف القطر الداخلي (يبدأ من حافة الجيب)
+      POCKET_RADIUS + 0.018, // نصف القطر الخارجي (يمتد فوق اللباد)
+      32, // النعومة
+    );
+
+    // مادة الإطار: مادة تشبه الجلد أو البلاستيك المقوى اللامع قليلاً
+    const rimMaterial = new THREE.MeshStandardMaterial({
+      color: "#1e293b", // لون رمادي داكن/جلد أسود
+      roughness: 0.4, // بريق خفيف يعكس الإضاءة العلوية بشكل واقعي
+      metalness: 0.2,
+      side: THREE.DoubleSide, // الرسم من الجهتين لمنع اختفائه عند زوايا الكاميرا
+    });
+
+    // رسم ووضع الجيوب والإطارات في المشهد
+    POCKETS.forEach((pocket) => {
+      // --- أ: إنشاء فجوة الجيب العمودية ---
+      const pMesh = new THREE.Mesh(pocketGeometry, pocketMaterial);
+
+      // إنزال الجيب لأسفل: (TABLE_HEIGHT / 2) هو السطح، نطرح منه نصف العمق لتسقط الأسطوانة لأسفل
+      pMesh.position.set(
+        pocket.x,
+        TABLE_HEIGHT / 2 - pocketDepth / 2,
+        pocket.z,
+      );
+
+      // تفعيل استقبال الظلال لكي تظهر ظلال حواف الطاولة والكرات بداخل الجيب
+      pMesh.receiveShadow = true;
+      tableGroup.add(pMesh);
+
+      // --- ب: إنشاء إطار الجيب (الحافة الجلدية) ---
+      const rimMesh = new THREE.Mesh(rimGeometry, rimMaterial);
+
+      // نضع الحلقة فوق سطح الطاولة بـ 1 مليمتر فقط لتجنب تداخل الأسطح بصرياً (Z-fighting)
+      rimMesh.position.set(pocket.x, TABLE_HEIGHT / 2 + 0.001, pocket.z);
+
+      // تدوير الحلقة لتصبح أفقية موازية لسطح الطاولة
+      rimMesh.rotation.x = -Math.PI / 2;
+
+      // تجعل الحافة تسقط ظلالاً خفيفة على اللباد لمزيد من الواقعية
+      rimMesh.castShadow = true;
+      tableGroup.add(rimMesh);
+    });
     scene.add(tableGroup);
 
     // 4. بناء خط التصويب المساعد (AimGuide) والعصا (CueStick) كمجسمات منفصلة ديناميكية
