@@ -52,21 +52,13 @@ export let TABLE_RESTITUTION =
 
 // عزم القصور الذاتي للكرة (سيتحدث تلقائياً عند تغيير الكتلة)
 export let BALL_INERTIA = (2 / 5) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
-// Friction, mass, and restitution constants.
-// K = 1/2 m v^2, and I = 2/5 mR^2 for a solid sphere.
 
-// Sidespin path curvature:
-// A small educational side force is applied while the ball moves on the cloth.
-// This matches the study statement that side friction can slightly change direction.
-// This is not air resistance.
+// Sidespin path curvature
 export const SIDE_SPIN_CURVE_COEFFICIENT = 0.015;
 export const SIDE_SPIN_EPSILON = 0.05;
 export const MAX_SIDE_SPIN_ACCELERATION = 0.35;
 
-// Tangential restitution for spin contact during ball-ball collision.
-// 0 means tangential slip is reduced without bouncing tangentially.
 export const BALL_TANGENTIAL_RESTITUTION = 0.0;
-// Simple cushion friction used only to transfer sidespin during rail collision.
 export const WALL_TANGENTIAL_FRICTION = 0.2;
 
 export const STOP_SPEED = 0.012;
@@ -110,22 +102,13 @@ const OBJECT_BALL_COLORS = [
 ];
 
 const TABLE_PLANE_ACCELERATION = new THREE.Vector3(0, 0, 0);
-/**
- * دالة لتحديث المتغيرات الفيزيائية ديناميكياً مع مراعاة القيود والحدود
- * @param {Object} world - كائن اللعبة الحالي لتحديث كتل الكرات النشطة فيه
- * @param {string} key - اسم المتغير الفيزيائي (مثل 'MU_S' أو 'G')
- * @param {number} value - القيمة الجديدة المدخلة من المستخدم
- */
+
 export function setPhysicsParameter(world, key, value) {
-  // التحقق من وجود المتغير في قائمة التوصيفات
   if (!PHYSICS_CONFIG_METADATA[key]) return null;
 
   const meta = PHYSICS_CONFIG_METADATA[key];
-
-  // تطبيق قيود المجال المحدد تلقائياً (منع القيم الخاطئة أو الخطيرة)
   const clampedValue = Math.max(meta.min, Math.min(meta.max, value));
 
-  // تحديث القيمة المقابلة في محرك الفيزياء
   switch (key) {
     case "G":
       G = clampedValue;
@@ -147,10 +130,8 @@ export function setPhysicsParameter(world, key, value) {
       break;
     case "BALL_MASS":
       BALL_MASS = clampedValue;
-      // تحديث مصفوفة عزم القصور الذاتي فوراً للحفاظ على دقة الدوران الفيزيائي الدقيق
       BALL_INERTIA = (2 / 5) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
 
-      // تحديث كتل الكرات الموجودة حالياً داخل الطاولة لضمان تطبيق الحسابات الجديدة فوراً
       if (world && world.balls) {
         world.balls.forEach((ball) => {
           ball.mass = BALL_MASS;
@@ -159,8 +140,9 @@ export function setPhysicsParameter(world, key, value) {
       break;
   }
 
-  return clampedValue; // إرجاع القيمة الفعلية المعتمدة بعد الكبح
+  return clampedValue;
 }
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -171,8 +153,6 @@ function makeBall({ id, label, color, x, z }) {
     label,
     color,
     mesh: null,
-    // Ball physics state follows the study notation:
-    // r = position, v = velocity, omega = angular velocity.
     position: new THREE.Vector3(x, BALL_Y, z),
     velocity: new THREE.Vector3(0, 0, 0),
     omega: new THREE.Vector3(0, 0, 0),
@@ -218,15 +198,15 @@ export function makeInitialBalls() {
 
   return balls;
 }
+
 export function makeWorld() {
   return {
-    balls: makeInitialBalls(), // الدالة الأصلية التي تنشئ المصفوفة
+    balls: makeInitialBalls(),
     collisions: 0,
     pocketed: 0,
     scratches: 0,
-    // --- البيانات الجديدة للعبة الثمان كرات ---
     currentPlayer: 1,
-    playerGroups: { 1: null, 2: null }, // 'solids' (سادة) أو 'stripes' (مخطط)
+    playerGroups: { 1: null, 2: null },
     solidsRemaining: 7,
     stripesRemaining: 7,
     winner: null,
@@ -251,6 +231,7 @@ export function isBallMoving(ball) {
 export function areAnyBallsMoving(balls) {
   return balls.some(isBallMoving);
 }
+
 export function getStats(world) {
   const cue = world.balls[0];
   const moving = world.balls.filter(isBallMoving).length;
@@ -261,8 +242,7 @@ export function getStats(world) {
     collisions: world.collisions,
     pocketed: world.pocketed,
     scratches: world.scratches,
-    canShoot: Boolean(cue && cue.active && moving === 0 && !world.winner), // تعطيل اللعب عند وجود فائز
-    // --- تمرير البيانات الجديدة إلى المكونات المرئية ---
+    canShoot: Boolean(cue && cue.active && moving === 0 && !world.winner),
     currentPlayer: world.currentPlayer,
     playerGroups: world.playerGroups,
     solidsRemaining: world.solidsRemaining,
@@ -271,6 +251,7 @@ export function getStats(world) {
     winner: world.winner,
   };
 }
+
 function getSpeedXZ(ball) {
   return Math.hypot(ball.velocity.x, ball.velocity.z);
 }
@@ -292,8 +273,6 @@ function getSlipSpeed(ball) {
 }
 
 function getContactVelocity(ball, rx, rz) {
-  // Contact point velocity: v_contact = v + omega x r.
-  // Here r = (rx, 0, rz), so side spin omega.y changes x/z contact speed.
   return {
     x: ball.velocity.x + ball.omega.y * rz,
     y: ball.velocity.y + ball.omega.z * rx - ball.omega.x * rz,
@@ -333,35 +312,9 @@ function updateMotionState(ball) {
   }
 }
 
-// Shot Jump landing is centralized so airborne state stays consistent.
-// A ball cannot go below the table, and cloth friction resumes after landing.
-function landBallOnTable(ball) {
-  ball.position.y = BALL_Y;
-
-  if (Math.abs(ball.velocity.y) > STOP_SPEED) {
-    ball.velocity.y = -TABLE_RESTITUTION * ball.velocity.y;
-  } else {
-    ball.velocity.y = 0;
-  }
-
-  if (Math.abs(ball.velocity.y) <= STOP_SPEED) {
-    ball.velocity.y = 0;
-    ball.isAirborne = false;
-    updateMotionState(ball);
-  } else {
-    ball.isAirborne = true;
-  }
-}
-
-// Cue shot impulse and angular impulse.
-// Off-center contact creates omega0 = (r x J) / I.
-// Shot Jump uses projectile launch components:
-// vx = v0 cos(alpha) cos(theta)
-// vz = v0 cos(alpha) sin(theta)
-// vy = v0 sin(alpha)
 export function shootCueBall(
   world,
-  forceInNewtons, // القوة بالنيوتن
+  forceInNewtons,
   angleDeg,
   cueContactY = 0,
   cueContactX = 0,
@@ -373,13 +326,10 @@ export function shootCueBall(
     return false;
   }
 
-  // 1. حساب السرعة الابتدائية باستخدام قانون نيوتن (F = ma)
-  // نفرض أن زمن تلامس رأس العصا بالكرة هو 0.05 ثانية (Impulse Time)
   const impulseTime = 0.05;
   const acceleration = forceInNewtons / cue.mass;
   const shotSpeed = acceleration * impulseTime;
 
-  // الحسابات الأخرى كما هي
   const clampedContactY = THREE.MathUtils.clamp(cueContactY, -0.7, 0.7);
   const clampedContactX = THREE.MathUtils.clamp(cueContactX, -0.7, 0.7);
 
@@ -395,7 +345,6 @@ export function shootCueBall(
 
   cue.velocity.set(vx, vy, vz);
 
-  // باقي الحسابات الدورانية...
   const hitOffsetY = clampedContactY * BALL_RADIUS;
   const hitOffsetX = clampedContactX * BALL_RADIUS;
   const impulseX = cue.mass * vx;
@@ -418,8 +367,6 @@ export function shootCueBall(
   return true;
 }
 
-// Sliding friction opposes contact slip u = v + omega x r.
-// The same friction changes linear velocity and creates torque on the ball.
 function applySlidingFriction(ball, dt) {
   const slipBefore = getSlipVelocityXZ(ball);
   const slipSpeedBefore = Math.hypot(slipBefore.x, slipBefore.z);
@@ -433,23 +380,18 @@ function applySlidingFriction(ball, dt) {
   const ux = slipBefore.x / slipSpeedBefore;
   const uz = slipBefore.z / slipSpeedBefore;
 
-  // Friction force is opposite to the slip velocity: F = -mu_s * m * g * u_hat.
   const forceX = -MU_S * ball.mass * G * ux;
   const forceZ = -MU_S * ball.mass * G * uz;
 
-  // Linear acceleration follows Newton's second law: a = F / m.
   const ax = forceX / ball.mass;
   const az = forceZ / ball.mass;
 
   ball.velocity.x += ax * dt;
   ball.velocity.z += az * dt;
-  // ball.velocity.y = 0; // تم تعطيله للسماح بالقفز الحر
 
-  // Torque from friction: tau = r x F, where the contact radius is r = (0, -R, 0).
   const torqueX = -BALL_RADIUS * forceZ;
   const torqueZ = BALL_RADIUS * forceX;
 
-  // Angular acceleration is alpha = tau / I for the solid sphere.
   ball.omega.x += (torqueX / BALL_INERTIA) * dt;
   ball.omega.z += (torqueZ / BALL_INERTIA) * dt;
 
@@ -463,8 +405,6 @@ function applySlidingFriction(ball, dt) {
   }
 }
 
-// Rolling friction reduces speed while preserving the pure rolling relation.
-// omega.x = vz / R, omega.z = -vx / R.
 function applyRollingFriction(ball, dt) {
   const speed = getSpeedXZ(ball);
 
@@ -483,7 +423,6 @@ function applyRollingFriction(ball, dt) {
   const scale = speedAfterFriction / speed;
   ball.velocity.x *= scale;
   ball.velocity.z *= scale;
-  // ball.velocity.y = 0; // تم تعطيله للسماح بالقفز الحر
   ball.motionState = "rolling";
   setPureRollingOmega(ball);
 }
@@ -495,17 +434,12 @@ function applySideSpinCurve(ball, dt) {
   if (Math.abs(ball.omega.y) <= SIDE_SPIN_EPSILON) return;
   if (isBallAirborne(ball)) return;
 
-  // Unit velocity direction on the x/z plane.
   const dirX = ball.velocity.x / speed;
   const dirZ = ball.velocity.z / speed;
 
-  // Perpendicular direction in the table plane.
-  // The sign of omega.y decides left/right curvature.
   const sideX = -dirZ;
   const sideZ = dirX;
 
-  // Small side acceleration from sidespin interacting with cloth:
-  // a_side ~= C * R * omega_y * speed
   let sideAcceleration =
     SIDE_SPIN_CURVE_COEFFICIENT * BALL_RADIUS * ball.omega.y * speed;
 
@@ -519,12 +453,62 @@ function applySideSpinCurve(ball, dt) {
   ball.velocity.z += sideZ * sideAcceleration * dt;
 }
 
-// Pocketing deactivates the ball; cue-ball pocketing is recorded as a scratch.
+// دالة لمعالجة خروج الكرات خارج حدود الطاولة بالكامل وتطبيق القوانين العالمية
+function handleBallJumpedOffTable(world, ball) {
+  ball.active = false;
+
+  // أ. إذا كانت الكرة الخارجة هي البيضاء (Scratch)
+  if (ball.id === 0) {
+    world.scratches += 1;
+    world.statusMessage = `خطأ! طارت الكرة البيضاء خارج حدود الطاولة. نقل الدور للاعب ${world.currentPlayer === 1 ? 2 : 1}`;
+    world.currentPlayer = world.currentPlayer === 1 ? 2 : 1;
+    return;
+  }
+
+  // ب. إذا كانت الكرة الخارجة هي السوداء (رقم 8)
+  if (ball.id === 8) {
+    const pGroup = world.playerGroups[world.currentPlayer];
+    if (!pGroup) {
+      world.winner = world.currentPlayer === 1 ? 2 : 1;
+      world.statusMessage = `خسارة! طارت الكرة 8 خارج الطاولة والطاولة مفتوحة. الفائز هو اللاعب ${world.winner}`;
+    } else {
+      const rem = pGroup === "solids" ? world.solidsRemaining : world.stripesRemaining;
+      if (rem === 0) {
+        world.winner = world.currentPlayer;
+        world.statusMessage = `🎉 فوز قانوني! اللاعب ${world.currentPlayer} أخرج الكرة 8 بعد إنهاء مجموعته وفاز باللقاء!`;
+      } else {
+        world.winner = world.currentPlayer === 1 ? 2 : 1;
+        world.statusMessage = `خسارة خطأ! طارت الكرة 8 خارج الطاولة قبل إنهاء بقية كرات مجموعتك. الفائز هو اللاعب ${world.winner}`;
+      }
+    }
+    return;
+  }
+
+  // ج. تصنيف الكرات العادية
+  const group = ball.id < 8 ? "solids" : "stripes";
+
+  if (group === "solids") world.solidsRemaining = Math.max(0, world.solidsRemaining - 1);
+  if (group === "stripes") world.stripesRemaining = Math.max(0, world.stripesRemaining - 1);
+  world.pocketed += 1;
+
+  // د. تحديد المجموعات لأول مرة إذا كانت الطاولة مفتوحة
+  if (!world.playerGroups[1] && !world.playerGroups[2]) {
+    const active = world.currentPlayer;
+    const opponent = active === 1 ? 2 : 1;
+
+    world.playerGroups[active] = group;
+    world.playerGroups[opponent] = group === "solids" ? "stripes" : "solids";
+
+    world.statusMessage = `طارت كرة ${group === "solids" ? "سادة" : "مخططة"} خارج الطاولة! تم تحديد المجموعات بقوة الأمر الواقع.`;
+  } else {
+    world.statusMessage = `طارت كرة ${group === "solids" ? "سادة" : "مخططة"} خارج الطاولة وتم استبعادها!`;
+  }
+}
+
 function pocketBall(world, ball) {
   ball.active = false;
   world.pocketed += 1;
 
-  // أ. إذا كانت الكرة الساقطة هي البيضاء (Scratch)
   if (ball.id === 0) {
     world.scratches += 1;
     world.statusMessage = `خطأ (Scratch)! سقطت الكرة البيضاء. نقل الدور للاعب ${world.currentPlayer === 1 ? 2 : 1}`;
@@ -532,21 +516,17 @@ function pocketBall(world, ball) {
     return;
   }
 
-  // ب. إذا كانت الكرة الساقطة هي السوداء (رقم 8)
   if (ball.id === 8) {
     const pGroup = world.playerGroups[world.currentPlayer];
     if (!pGroup) {
-      // خسارة فورية إذا أُدخلت الكرة 8 والطاولة ما زالت مفتوحة
       world.winner = world.currentPlayer === 1 ? 2 : 1;
       world.statusMessage = `خسارة! تم إسقاط الكرة 8 قبل تحديد المجموعات. الفائز هو اللاعب ${world.winner}`;
     } else {
-      const rem =
-        pGroup === "solids" ? world.solidsRemaining : world.stripesRemaining;
+      const rem = pGroup === "solids" ? world.solidsRemaining : world.stripesRemaining;
       if (rem === 0) {
         world.winner = world.currentPlayer;
         world.statusMessage = `🎉 فوز قانوني! اللاعب ${world.currentPlayer} أسقط الكرة 8 وفاز بالمباراة!`;
       } else {
-        // خسارة إذا سقطت الـ 8 وكرات اللاعب لا تزال على الطاولة
         world.winner = world.currentPlayer === 1 ? 2 : 1;
         world.statusMessage = `خسارة خطأ! سقطت الكرة 8 قبل إنهاء بقية كرات مجموعتك. الفائز هو اللاعب ${world.winner}`;
       }
@@ -554,16 +534,11 @@ function pocketBall(world, ball) {
     return;
   }
 
-  // ج. تصنيف الكرات العادية (يرجى التأكد من أن دالة المكونات تضع ball.group بناءً على رقمها)
-  // كرات السادة (1-7) والكرات المخططة (9-15)
   const group = ball.id < 8 ? "solids" : "stripes";
 
-  if (group === "solids")
-    world.solidsRemaining = Math.max(0, world.solidsRemaining - 1);
-  if (group === "stripes")
-    world.stripesRemaining = Math.max(0, world.stripesRemaining - 1);
+  if (group === "solids") world.solidsRemaining = Math.max(0, world.solidsRemaining - 1);
+  if (group === "stripes") world.stripesRemaining = Math.max(0, world.stripesRemaining - 1);
 
-  // د. تحديد المجموعات لأول مرة (Open Table Rule)
   if (!world.playerGroups[1] && !world.playerGroups[2]) {
     const active = world.currentPlayer;
     const opponent = active === 1 ? 2 : 1;
@@ -585,12 +560,9 @@ function tryPocketBall(world, ball) {
     const dz = ball.position.z - pocket.z;
     const distance = Math.hypot(dx, dz);
 
-    // إذا دخل مركز الكرة بالكامل تقريباً داخل حدود الجيب
     if (distance <= POCKET_RADIUS * 0.85) {
       ball.isFalling = true;
-      ball.motionState = "sliding"; // تحويلها للانزلاق لتبدأ بالسقوط
-
-      // توجيه سرعة الكرة ببطء نحو مركز الجيب الداخلي لإعطاء تأثير الجاذبية الداخلية
+      ball.motionState = "sliding";
       ball.velocity.x = (pocket.x - ball.position.x) * 2;
       ball.velocity.z = (pocket.z - ball.position.z) * 2;
       return true;
@@ -600,16 +572,11 @@ function tryPocketBall(world, ball) {
   return false;
 }
 
-// Rail collision reflects normal velocity: vn' = -ew * vn.
-// A limited tangential impulse gives a simple sidespin/cushion effect.
 function resolveRailCollision(world, ball, normalX, normalZ) {
   const vn = ball.velocity.x * normalX + ball.velocity.z * normalZ;
 
-  // شرط حازم: لا يحسب تصادم إذا كانت الكرة تبتعد (vn >= 0)
-  // أو إذا كانت السرعة العمودية ضئيلة جداً (أقل من 0.05 م/ث) وهي حالة الاحتكاك والالتصاق بالحافة
   if (vn >= -0.05) return;
 
-  // زيادة العداد فقط عند الارتداد الفعلي الواضح
   world.collisions += 1;
 
   const invMass = 1 / ball.mass;
@@ -626,8 +593,7 @@ function resolveRailCollision(world, ball, normalX, normalZ) {
   const contactVelocity = getContactVelocity(ball, contactX, contactZ);
   const vContactT = contactVelocity.x * tangentX + contactVelocity.z * tangentZ;
 
-  const tangentDenominator =
-    invMass + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA;
+  const tangentDenominator = invMass + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA;
   let tangentImpulse = -vContactT / tangentDenominator;
   const maxTangentImpulse = WALL_TANGENTIAL_FRICTION * Math.abs(normalImpulse);
 
@@ -638,42 +604,54 @@ function resolveRailCollision(world, ball, normalX, normalZ) {
 
   const impulseX = tangentImpulse * tangentX;
   const impulseZ = tangentImpulse * tangentZ;
-  const deltaOmegaY =
-    (contactZ * impulseX - contactX * impulseZ) / BALL_INERTIA;
+  const deltaOmegaY = (contactZ * impulseX - contactX * impulseZ) / BALL_INERTIA;
 
   ball.omega.y += deltaOmegaY;
   updateMotionState(ball);
 }
+
 export function handleTableWalls(world, ball) {
   const limitX = TABLE_WIDTH / 2 - BALL_RADIUS;
   const limitZ = TABLE_DEPTH / 2 - BALL_RADIUS;
 
   // جدار اليسار
   if (ball.position.x < -limitX) {
-    ball.position.x = -limitX;
-    resolveRailCollision(world, ball, 1, 0);
+    if (ball.position.y > RAIL_TOP_Y && ball.velocity.x < 0) {
+      // الكرة أعلى من الحافة وتتجه للخارج -> تعبر الحافة وتخرج خارج الطاولة
+    } else {
+      ball.position.x = -limitX;
+      resolveRailCollision(world, ball, 1, 0);
+    }
   }
   // جدار اليمين
   if (ball.position.x > limitX) {
-    ball.position.x = limitX;
-    resolveRailCollision(world, ball, -1, 0);
+    if (ball.position.y > RAIL_TOP_Y && ball.velocity.x > 0) {
+      // تعبر الحافة وتخرج خارج الطاولة
+    } else {
+      ball.position.x = limitX;
+      resolveRailCollision(world, ball, -1, 0);
+    }
   }
   // جدار الأعلى
   if (ball.position.z < -limitZ) {
-    ball.position.z = -limitZ;
-    resolveRailCollision(world, ball, 0, 1);
+    if (ball.position.y > RAIL_TOP_Y && ball.velocity.z < 0) {
+      // تعبر الحافة وتخرج خارج الطاولة
+    } else {
+      ball.position.z = -limitZ;
+      resolveRailCollision(world, ball, 0, 1);
+    }
   }
   // جدار الأسفل
   if (ball.position.z > limitZ) {
-    ball.position.z = limitZ;
-    resolveRailCollision(world, ball, 0, -1);
+    if (ball.position.y > RAIL_TOP_Y && ball.velocity.z > 0) {
+      // تعبر الحافة وتخرج خارج الطاولة
+    } else {
+      ball.position.z = limitZ;
+      resolveRailCollision(world, ball, 0, -1);
+    }
   }
 }
-// Ball-ball collision uses the normal impulse:
-// Jn = -(1 + e)(vrel . n) / (1/ma + 1/mb)
-// Tangential contact adds:
-// Jt = -(1 + et)(vrel,t) / (1/ma + 1/mb + R^2/Ia + R^2/Ib)
-// Airborne collisions use the same normal impulse in 3D.
+
 export function resolveBallCollisions(world) {
   const balls = world.balls;
   const minDistance = BALL_RADIUS * 2;
@@ -702,9 +680,7 @@ export function resolveBallCollisions(world) {
         const rvx = b.velocity.x - a.velocity.x;
         const rvy = b.velocity.y - a.velocity.y;
         const rvz = b.velocity.z - a.velocity.z;
-        const relativeSpeedSq = use3D
-          ? rvx * rvx + rvy * rvy + rvz * rvz
-          : rvx * rvx + rvz * rvz;
+        const relativeSpeedSq = use3D ? rvx * rvx + rvy * rvy + rvz * rvz : rvx * rvx + rvz * rvz;
 
         if (relativeSpeedSq > 1e-12) {
           const relativeSpeed = Math.sqrt(relativeSpeedSq);
@@ -712,9 +688,7 @@ export function resolveBallCollisions(world) {
           dy = use3D ? rvy / relativeSpeed : 0;
           dz = rvz / relativeSpeed;
         } else {
-          dx = 1;
-          dy = 0;
-          dz = 0;
+          dx = 1; dy = 0; dz = 0;
         }
         distance = 1;
         distanceSq = distance * distance;
@@ -728,11 +702,9 @@ export function resolveBallCollisions(world) {
       const invMassSum = invMassA + invMassB;
       if (invMassSum <= 0) continue;
 
-      // 1. تصحيح التداخل الهندسي (Position Resolution)
       const penetration = minDistance - distance;
       if (penetration > 0) {
-        const correctionMagnitude =
-          (Math.max(penetration - slop, 0) / invMassSum) * percent;
+        const correctionMagnitude = (Math.max(penetration - slop, 0) / invMassSum) * percent;
         a.position.x -= nx * correctionMagnitude * invMassA;
         b.position.x += nx * correctionMagnitude * invMassB;
         a.position.z -= nz * correctionMagnitude * invMassA;
@@ -751,18 +723,13 @@ export function resolveBallCollisions(world) {
       const rvz = b.velocity.z - a.velocity.z;
       const relNormal = rvx * nx + rvy * ny + rvz * nz;
 
-      // إذا كانت الكرات تبتعد بالفعل، تخطى الحسابات تجنباً للاهتزازات
       if (relNormal >= 0) continue;
 
-      // [تعديل ذكي للعداد]: زيادة العداد فقط إذا كان التصادم قوياً (سرعة واضحة قبل التصادم)
-      // أما إذا كان التلامس خفيفاً جداً (أكبر من -0.05) فلا نزيد العداد ولكن نترك الفيزياء تعالج الحركة لمنع التلاصق
       if (relNormal < -0.05) {
         world.collisions += 1;
       }
 
-      // 2. حساب وتطبيق دافع الارتداد العمودي (Normal Impulse)
-      const impulseMagnitude =
-        (-(1 + BALL_RESTITUTION) * relNormal) / invMassSum;
+      const impulseMagnitude = (-(1 + BALL_RESTITUTION) * relNormal) / invMassSum;
 
       a.velocity.x -= nx * impulseMagnitude * invMassA;
       a.velocity.y -= ny * impulseMagnitude * invMassA;
@@ -773,19 +740,14 @@ export function resolveBallCollisions(world) {
 
       if (use3D) {
         for (const ball of [a, b]) {
-          if (
-            ball.position.y > BALL_Y + 0.0005 ||
-            Math.abs(ball.velocity.y) >
-              (typeof STOP_SPEED !== "undefined" ? STOP_SPEED : 0.01)
-          ) {
+          if (ball.position.y > BALL_Y + 0.0005 || Math.abs(ball.velocity.y) > 0.01) {
             ball.isAirborne = true;
             ball.motionState = "sliding";
           } else {
             ball.position.y = BALL_Y;
             ball.velocity.y = 0;
             ball.isAirborne = false;
-            if (typeof updateMotionState === "function")
-              updateMotionState(ball);
+            updateMotionState(ball);
           }
         }
         continue;
@@ -794,7 +756,6 @@ export function resolveBallCollisions(world) {
       a.velocity.y = 0;
       b.velocity.y = 0;
 
-      // 3. معالجة الاحتكاك المماسي وعزم الدوران المغزلي (منع الدوران اللانهائي حول نقطة التماس)
       const tx = -nz;
       const tz = nx;
       const rxA = BALL_RADIUS * nx;
@@ -802,39 +763,27 @@ export function resolveBallCollisions(world) {
       const rxB = -BALL_RADIUS * nx;
       const rzB = -BALL_RADIUS * nz;
 
-      if (typeof getContactVelocity === "function") {
-        const contactA = getContactVelocity(a, rxA, rzA);
-        const contactB = getContactVelocity(b, rxB, rzB);
-        const vRelT =
-          (contactB.x - contactA.x) * tx + (contactB.z - contactA.z) * tz;
+      const contactA = getContactVelocity(a, rxA, rzA);
+      const contactB = getContactVelocity(b, rxB, rzB);
+      const vRelT = (contactB.x - contactA.x) * tx + (contactB.z - contactA.z) * tz;
 
-        const tangentialDenominator =
-          invMassA +
-          invMassB +
-          (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA +
-          (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA;
+      const tangentialDenominator = invMassA + invMassB + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA;
+      const TANGENTIAL_RESTITUTION = 0.15;
+      const tangentImpulse = (-(1 + TANGENTIAL_RESTITUTION) * vRelT) / tangentialDenominator;
 
-        // تم رفع الارتداد المماسي هنا إلى 0.15 لمنع الكرات من التصرف كالتروس الميكانيكية وتفريق الأسطح
-        const TANGENTIAL_RESTITUTION = 0.15;
-        const tangentImpulse =
-          (-(1 + TANGENTIAL_RESTITUTION) * vRelT) / tangentialDenominator;
+      a.velocity.x -= tx * tangentImpulse * invMassA;
+      a.velocity.z -= tz * tangentImpulse * invMassA;
+      b.velocity.x += tx * tangentImpulse * invMassB;
+      b.velocity.z += tz * tangentImpulse * invMassB;
 
-        a.velocity.x -= tx * tangentImpulse * invMassA;
-        a.velocity.z -= tz * tangentImpulse * invMassA;
-        b.velocity.x += tx * tangentImpulse * invMassB;
-        b.velocity.z += tz * tangentImpulse * invMassB;
-
-        if (a.omega && b.omega) {
-          const deltaOmegaY = (BALL_RADIUS * tangentImpulse) / BALL_INERTIA;
-          a.omega.y += deltaOmegaY;
-          b.omega.y += deltaOmegaY;
-        }
+      if (a.omega && b.omega) {
+        const deltaOmegaY = (BALL_RADIUS * tangentImpulse) / BALL_INERTIA;
+        a.omega.y += deltaOmegaY;
+        b.omega.y += deltaOmegaY;
       }
 
-      if (typeof updateMotionState === "function") {
-        updateMotionState(a);
-        updateMotionState(b);
-      }
+      updateMotionState(a);
+      updateMotionState(b);
     }
   }
 }
@@ -843,12 +792,7 @@ function isSpotAvailable(balls, candidate) {
   const limitX = TABLE_WIDTH / 2 - BALL_RADIUS;
   const limitZ = TABLE_DEPTH / 2 - BALL_RADIUS;
 
-  if (
-    candidate.x < -limitX ||
-    candidate.x > limitX ||
-    candidate.z < -limitZ ||
-    candidate.z > limitZ
-  ) {
+  if (candidate.x < -limitX || candidate.x > limitX || candidate.z < -limitZ || candidate.z > limitZ) {
     return false;
   }
 
@@ -885,9 +829,7 @@ function respotCueBallIfNeeded(world) {
     }
   }
 
-  const safeSpot =
-    candidates.find((candidate) => isSpotAvailable(world.balls, candidate)) ||
-    CUE_START.clone();
+  const safeSpot = candidates.find((candidate) => isSpotAvailable(world.balls, candidate)) || CUE_START.clone();
 
   cue.position.copy(safeSpot);
   cue.position.y = BALL_Y;
@@ -898,70 +840,70 @@ function respotCueBallIfNeeded(world) {
   cue.active = true;
 }
 
-// Fixed-step world update with semi-implicit Euler:
-// v(t + dt) = v(t) + a dt
-// r(t + dt) = r(t) + v(t + dt) dt
-// Airborne balls use ay = -g and skip cloth, rails, and pocket checks.
-// Fixed-step world update with semi-implicit Euler:
-// v(t + dt) = v(t) + a dt
-// r(t + dt) = r(t) + v(t + dt) dt
-// Airborne balls use ay = -g and skip cloth, rails, and pocket checks.
 export function stepWorld(world, dt) {
   for (const ball of world.balls) {
     if (!ball.active) continue;
 
-    // 1. معالجة حركة السقوط التدريجي والواقعي داخل الجيب
+    // 1. معالجة حركة السقوط التدريجي داخل الجيب
     if (ball.isFalling) {
-      // سحب الكرة لأسفل (تقليل الـ Y بتأثير الجاذبية)
       ball.velocity.y -= G * dt;
       ball.position.y += ball.velocity.y * dt;
-
-      // كبح الحركة الأفقية تدريجيًا لتسقط الكرة بشكل عمودي تقريباً داخل الجيب
       ball.velocity.x *= 0.9;
       ball.velocity.z *= 0.9;
-
-      // تحديث الموقع الأفقي بناءً على السرعة المتبقية المقيدة
       ball.position.x += ball.velocity.x * dt;
       ball.position.z += ball.velocity.z * dt;
 
-      // إذا غطست الكرة بالكامل تحت مستوى سطح الطاولة
       if (ball.position.y < TABLE_HEIGHT / 2 - ball.radius) {
-        // احتساب النقاط/الأخطاء وتعطيل الكرة نهائيًا
         pocketBall(world, ball);
-        // إعادة تعيين المتغير ليكون جاهزًا عند إعادة توليد الكرة البيضاء لاحقًا
         ball.isFalling = false;
       }
-
-      // تخطي باقي حسابات الفيزياء والتصادمات فوق الطاولة لأن الكرة تسقط بالأسفل
       continue;
     }
 
-    // 2. حسابات حركة القفز الرأسية العادية (Y) والجاذبية الأصلية
+    // 2. حسابات حركة القفز الرأسية (Y) والجاذبية الأصلية
     if (ball.isAirborne) {
-      // تطبيق الجاذبية لتقليل السرعة الرأسية تدريجياً
       ball.velocity.y -= G * dt;
       ball.position.y += ball.velocity.y * dt;
 
-      // رصد لحظة الاصطدام بالأرض (الهبوط)
-      if (ball.position.y <= BALL_Y) {
-        ball.position.y = BALL_Y;
+      // رصد هل الكرة فوق الطاولة أم خارج الطاولة تماماً
+      const isOverTable =
+        Math.abs(ball.position.x) <= TABLE_WIDTH / 2 &&
+        Math.abs(ball.position.z) <= TABLE_DEPTH / 2;
 
-        // إذا كانت سرعة الهبوط قوية، ترتد الكرة لأعلى بنسبة معينة
-        if (ball.velocity.y < -0.5) {
-          ball.velocity.y = -ball.velocity.y * BALL_RESTITUTION;
-        } else {
-          ball.velocity.y = 0;
-          ball.isAirborne = false; // استقرت تماماً على الأرض
+      if (isOverTable) {
+        if (ball.position.y <= BALL_Y) {
+          ball.position.y = BALL_Y;
+
+          if (ball.velocity.y < -0.5) {
+            ball.velocity.y = -ball.velocity.y * BALL_RESTITUTION;
+          } else {
+            ball.velocity.y = 0;
+            ball.isAirborne = false;
+          }
+        }
+      } else {
+        // الكرة خارج حدود الطاولة! تستمر في السقوط الحر لأسفل نحو الأرضية
+        if (ball.position.y < -0.4) {
+          handleBallJumpedOffTable(world, ball);
+          continue;
         }
       }
     } else {
-      // إذا كانت الكرة على الأرض أصلاً، نضمن تصفير السرعة والموقع الرأسي
+      // حماية إضافية في حال تخطت الكرة الحدود دون تفعيل airborne
+      const isOverTable =
+        Math.abs(ball.position.x) <= TABLE_WIDTH / 2 &&
+        Math.abs(ball.position.z) <= TABLE_DEPTH / 2;
+
+      if (!isOverTable) {
+        handleBallJumpedOffTable(world, ball);
+        continue;
+      }
+
       ball.velocity.y = 0;
       ball.position.y = BALL_Y;
     }
 
-    // 3. تحديث حالات الاحتكاك والدوران المعتادة
-    // 3. تحديث حالات الاحتكاك والدوران المعتادة (تُطبق فقط إذا كانت الكرة ملامسة لسطح الطاولة وليست طائرة)
+    // 3. تحديث حالات الاحتكاك والدوران (عند التلامس مع السطح فقط)
     if (!ball.isAirborne) {
       updateMotionState(ball);
 
@@ -974,48 +916,42 @@ export function stepWorld(world, dt) {
 
     applySideSpinCurve(ball, dt);
 
-    // تطبيق عجلة الطاولة (إن وجدت)
     if (typeof TABLE_PLANE_ACCELERATION !== "undefined") {
       ball.velocity.x += TABLE_PLANE_ACCELERATION.x * dt;
       ball.velocity.z += TABLE_PLANE_ACCELERATION.z * dt;
     }
 
-    // 4. تحديث الموقع الأفقي (X, Z) بناءً على السرعات الأفقية
+    // 4. تحديث الموقع الأفقي (X, Z)
     ball.position.x += ball.velocity.x * dt;
     ball.position.z += ball.velocity.z * dt;
 
-    // 5. استدعاء فحص الجدران والحواف (يعمل دائماً لمنع الاختراق حتى في الهواء)
+    // 5. فحص الجدران والحواف
     handleTableWalls(world, ball);
 
-    // فحص الجيوب (يحدث فقط إذا كانت الكرة قريبة من سطح الطاولة وليس طائرة عالياً في الهواء)
+    // فحص الجيوب
     if (ball.position.y <= BALL_Y + 0.01) {
       if (tryPocketBall(world, ball)) continue;
     }
   }
 
-  // معالجة تصادم الكرات مع بعضها البعض
   resolveBallCollisions(world);
 
-  // حلقة تأكيد نهائية لضمان عدم خروج أي كرة بعد حسابات التصادم
+  // حلقة تأكيد نهائية لمنع الاختراقات المفاجئة
   for (const ball of world.balls) {
     if (!ball.active) continue;
     handleTableWalls(world, ball);
   }
 
-  // التحقق تلقائيًا من حالة الكرة البيضاء وإعادتها للمشهد بمجرد توقف حركة بقية الكرات
   respotCueBallIfNeeded(world);
 
-  // إعادة ضبط الكرة البيضاء قانونياً إذا طارت خارج حدود الغرفة تماماً بالخطأ
+  // طبقة أمان نهائية احتياطية للكرة البيضاء
   const cueBall = world.balls.find((b) => b.isCue);
   if (cueBall && cueBall.active) {
     const safetyMargin = 0.4;
     const limitX = TABLE_WIDTH / 2 + safetyMargin;
     const limitZ = TABLE_DEPTH / 2 + safetyMargin;
 
-    if (
-      Math.abs(cueBall.position.x) > limitX ||
-      Math.abs(cueBall.position.z) > limitZ
-    ) {
+    if (Math.abs(cueBall.position.x) > limitX || Math.abs(cueBall.position.z) > limitZ) {
       cueBall.position.set(0, BALL_Y, 0);
       cueBall.velocity.set(0, 0, 0);
       if (cueBall.omega) cueBall.omega.set(0, 0, 0);

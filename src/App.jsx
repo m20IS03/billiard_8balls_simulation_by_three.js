@@ -21,7 +21,6 @@ import {
   setPhysicsParameter,
 } from "./physics.js";
 
-// مكون لوحة النتائج (Scoreboard) الأصلي متطابق تماماً
 function Scoreboard({ stats }) {
   const p1Group = stats.playerGroups?.[1];
   const p2Group = stats.playerGroups?.[2];
@@ -100,17 +99,17 @@ function Stat({ title, value }) {
 }
 
 export default function App() {
-  // المرجع الخاص بحاوية الرسم ثلاثي الأبعاد
+  // مرجع لتتبع زاوية الكاميرا والمسافة دون إعادة رندرة المكون بكثرة
+  const cameraParams = useRef({ angle: 0, distance: 3.5 });
   const containerRef = useRef(null);
+
   const [physicsValues, setPhysicsValues] = useState({
     G: PHYSICS_CONFIG_METADATA.G.default,
     MU_S: PHYSICS_CONFIG_METADATA.MU_S.default,
     MU_R: PHYSICS_CONFIG_METADATA.MU_R.default,
     BALL_MASS: PHYSICS_CONFIG_METADATA.BALL_MASS.default,
   });
-  // حالات التحكم بالواجهة الرسومية عبر React
-  // في ملف App.jsx، قم بتغيير الحالة من power إلى force
-  const [force, setForce] = useState(5.0); // القيمة الافتراضية 5 نيوتن
+  const [force, setForce] = useState(5.0);
   const [angleDeg, setAngleDeg] = useState(0);
   const [cueContactY, setCueContactY] = useState(0);
   const [cueContactX, setCueContactX] = useState(0);
@@ -119,7 +118,6 @@ export default function App() {
   const [resetSignal, setResetSignal] = useState(0);
   const [stats, setStats] = useState(() => getStats(makeWorld()));
 
-  // مرجع لحفظ أحدث قيم المدخلات لتجنب الاستدعاءات المغلقة القديمة (Stale Closures) داخل حلقة الـ Animation
   const inputsRef = useRef({
     force,
     angleDeg,
@@ -150,20 +148,49 @@ export default function App() {
     resetSignal,
   ]);
 
+  // مراقبة لوحة المفاتيح لتغيير زاوية الكاميرا وعمقها بسلاسة عالية جداً
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      switch (e.key) {
+        case "ArrowLeft":
+          cameraParams.current.angle -= 0.08; // سرعة الدوران لليسار
+          break;
+        case "ArrowRight":
+          cameraParams.current.angle += 0.08; // سرعة الدوران لليمين
+          break;
+        case "w":
+        case "W":
+          cameraParams.current.distance = Math.max(
+            1.3,
+            cameraParams.current.distance - 0.15,
+          ); // الحد الأدنى للتقريب
+          break;
+        case "s":
+        case "S":
+          cameraParams.current.distance = Math.min(
+            6.5,
+            cameraParams.current.distance + 0.15,
+          ); // الحد الأقصى للتبعيد
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // أبعاد لوحة الرسم الافتراضية
     const width = containerRef.current.clientWidth || 800;
     const height = containerRef.current.clientHeight || 550;
 
-    // 1. إعداد المشهد والكاميرا والمصيّر (Scene, Camera, Renderer)
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#07111f");
 
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.01, 40);
-    camera.position.set(0, 2.5, 2.05);
-    camera.lookAt(0, 0, 0);
+
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance",
@@ -173,13 +200,11 @@ export default function App() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
-    // السطر السحري المضاف هنا لحل مشكلة تجمّد الرسوم تماماً
     if (containerRef.current) {
       containerRef.current.innerHTML = "";
     }
 
     containerRef.current.appendChild(renderer.domElement);
-    // 2. منظومة الإضاءة والظلال الكاملة المطابقة للأصل
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
@@ -196,7 +221,6 @@ export default function App() {
     pointLight.position.set(-1.3, 1.1, -0.8);
     scene.add(pointLight);
 
-    // 3. بناء مجسمات طاولة البلياردو (Table Geometry & Materials)
     const tableGroup = new THREE.Group();
     const railThickness = 0.1;
     const railHeight = 0.075;
@@ -206,7 +230,6 @@ export default function App() {
     const legHeight = 0.75;
     const legY = -0.065 - legHeight / 2;
 
-    // قاعدة الطاولة الخشبية
     const baseMesh = new THREE.Mesh(
       new THREE.BoxGeometry(TABLE_WIDTH + 0.32, 0.13, TABLE_DEPTH + 0.32),
       new THREE.MeshStandardMaterial({ color: "#5b341e", roughness: 0.72 }),
@@ -215,7 +238,6 @@ export default function App() {
     baseMesh.receiveShadow = true;
     tableGroup.add(baseMesh);
 
-    // الأرجل الأربعة
     const legGeometry = new THREE.CylinderGeometry(0.08, 0.05, legHeight, 16);
     const legMaterial = new THREE.MeshStandardMaterial({
       color: "#422312",
@@ -235,7 +257,6 @@ export default function App() {
       tableGroup.add(legMesh);
     });
 
-    // سطح اللباد الأخضر المقاوم للأشعة وعنصر التوجيه بالماوس
     const clothMesh = new THREE.Mesh(
       new THREE.BoxGeometry(TABLE_WIDTH, TABLE_HEIGHT, TABLE_DEPTH),
       new THREE.MeshStandardMaterial({ color: "#0f7a43", roughness: 0.92 }),
@@ -243,7 +264,6 @@ export default function App() {
     clothMesh.receiveShadow = true;
     tableGroup.add(clothMesh);
 
-    // الباندات / الحواف الجانبية للطاولة
     const railMaterial = new THREE.MeshStandardMaterial({
       color: "#6b3f24",
       roughness: 0.74,
@@ -296,7 +316,6 @@ export default function App() {
     r4.castShadow = true;
     tableGroup.add(r4);
 
-    // الجيوب الستة ثلاثية الأبعاد
     const pocketDepth = 0.06;
     const pocketGeometry = new THREE.CylinderGeometry(
       POCKET_RADIUS,
@@ -330,17 +349,15 @@ export default function App() {
         pocket.z,
       );
       pMesh.receiveShadow = true;
-      tableGroup.add(pMesh);
-
+scene.add(pMesh);
       const rimMesh = new THREE.Mesh(rimGeometry, rimMaterial);
       rimMesh.position.set(pocket.x, TABLE_HEIGHT / 2 + 0.001, pocket.z);
       rimMesh.rotation.x = -Math.PI / 2;
       rimMesh.castShadow = true;
-      tableGroup.add(rimMesh);
+      scene.add(rimMesh);
     });
     scene.add(tableGroup);
 
-    // 4. بناء خط التصويب المساعد (AimGuide) والعصا (CueStick) كمجسمات منفصلة ديناميكية
     const aimGuideGroup = new THREE.Group();
     const guideCylinder = new THREE.Mesh(
       new THREE.CylinderGeometry(0.0055, 0.0055, 1, 18),
@@ -382,15 +399,11 @@ export default function App() {
     cueStickGroup.add(tipMesh);
     scene.add(cueStickGroup);
 
-    // ============================================================
-    // 5. إدارة وتهيئة الكرات ثلاثية الأبعاد (تحديث منطق الكرات المخططة)
-    // ============================================================
     let world = makeWorld();
     const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
     const ballVisuals = [];
 
     const initializeBallMeshes = () => {
-      // إزالة ومسح الكرات السابقة وتنظيف موادها من كارت الشاشة لمنع الـ Memory Leak
       ballVisuals.forEach((v) => {
         scene.remove(v.mesh);
         if (v.mesh.material) {
@@ -400,18 +413,15 @@ export default function App() {
       });
       ballVisuals.length = 0;
 
-      // دالة مساعدة لإنشاء نسيج مخطط (Stripe Texture) ديناميكياً بواسطة Canvas
       const createStripedTexture = (colorHex) => {
         const canvas = document.createElement("canvas");
         canvas.width = 256;
         canvas.height = 128;
         const ctx = canvas.getContext("2d");
 
-        // أ) رسم لون الخلفية الأبيض الأساسي (أطراف الكرة البلياردو المخططة)
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, 256, 128);
 
-        // ب) رسم شريط عريض ملوّن بدقة في منتصف الإحداثيات الأفقية للكرة
         ctx.fillStyle = colorHex;
         ctx.fillRect(0, 32, 256, 64);
 
@@ -421,7 +431,6 @@ export default function App() {
       };
 
       world.balls.forEach((ball) => {
-        // التحقق برمجياً مما إذا كانت الكرة مخططة (بناءً على معيار الـ 8-Ball وهو ID من 9 لـ 15 أو أي خاصية ممررة)
         const isStripe =
           ball.isStripe ||
           ball.type === "stripes" ||
@@ -430,14 +439,12 @@ export default function App() {
         let ballMat;
 
         if (isStripe) {
-          // إذا كانت الكرة مخططة، نستخدم النسيج الديناميكي المولد (map) بدلاً من اللون السادة
           ballMat = new THREE.MeshStandardMaterial({
             map: createStripedTexture(ball.color || "#ff0000"),
             roughness: 0.15,
             metalness: 0.05,
           });
         } else {
-          // الكرة البيضاء، السوداء، والكرات السادة (1-7) تبقى بلون كامل مصمت
           ballMat = new THREE.MeshStandardMaterial({
             color: ball.color || "#ffffff",
             roughness: 0.15,
@@ -455,7 +462,6 @@ export default function App() {
 
     initializeBallMeshes();
 
-    // 6. تتبع حركة الماوس واللمس لتغيير الزاوية ديناميكياً (Raycasting)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -488,7 +494,6 @@ export default function App() {
       if (e.buttons === 1) handlePointerAim(e);
     });
 
-    // 7. الحلقة الأساسية للمحاكاة والرسم (Animation & Physics Step Loop)
     let lastHitSignal = inputsRef.current.hitSignal;
     let lastResetSignal = inputsRef.current.resetSignal;
     let physicsAccumulator = 0;
@@ -505,7 +510,6 @@ export default function App() {
 
       const currentInputs = inputsRef.current;
 
-      // أ) معالجة إشارة إعادة الضبط
       if (currentInputs.resetSignal !== lastResetSignal) {
         lastResetSignal = currentInputs.resetSignal;
         world = makeWorld();
@@ -515,7 +519,6 @@ export default function App() {
         setStats(getStats(world));
       }
 
-      // ب) معالجة إشارة ضربة الكرة البيضاء
       if (currentInputs.hitSignal !== lastHitSignal) {
         lastHitSignal = currentInputs.hitSignal;
         shootCueBall(
@@ -529,7 +532,6 @@ export default function App() {
         setStats(getStats(world));
       }
 
-      // ج) الحسابات الفيزيائية الدقيقة بخطوات ثابتة (Substepping)
       const frameDt = Math.min(delta, MAX_FRAME_DT);
       physicsAccumulator += frameDt;
 
@@ -541,7 +543,6 @@ export default function App() {
       }
       if (substeps === MAX_SUBSTEPS) physicsAccumulator = 0;
 
-      // د) تحديث مواقع ومصفوفات دوران الكرات هندسياً على الشاشة
       ballVisuals.forEach(({ ballData, mesh }) => {
         mesh.visible = ballData.active;
         if (ballData.active) {
@@ -551,7 +552,6 @@ export default function App() {
             ballData.position.z,
           );
 
-          // حساب زاوية الدحرجة والالتفاف البصري للكرة بناءً على متجه السرعة الزاوية (omega) من الفيزياء
           if (
             frameDt > 0 &&
             (ballData.velocity.x !== 0 || ballData.velocity.z !== 0)
@@ -563,7 +563,6 @@ export default function App() {
         }
       });
 
-      // هـ) تحديث مؤشرات خط التوجيه وعصا البلياردو بصرياً
       const currentStats = getStats(world);
       const cueBall = world.balls[0];
       const isMoving = ballVisuals.some(
@@ -605,14 +604,21 @@ export default function App() {
         cueStickGroup.visible = false;
       }
 
-      // و) إرسال الإحصائيات الدورية لتحديث واجهة مستخدم React
       uiStatsTimer += frameDt;
       if (uiStatsTimer >= 0.12) {
         uiStatsTimer = 0;
         setStats(currentStats);
       }
 
-      camera.lookAt(0, 0, 0);
+      // --- تطبيق نظام الإحداثيات القطبية لتحديث موقع الكاميرا لحظياً حول المركز (0,0,0) ---
+      const { angle: camAngle, distance: camDist } = cameraParams.current;
+      const camX = Math.sin(camAngle) * camDist;
+      const camZ = Math.cos(camAngle) * camDist;
+
+      camera.position.set(camX, 2.3, camZ); // ارتفاع 2.3 متر ممتاز لرؤية كامل الطاولة والكرات
+      camera.lookAt(0, 0, 0); // تركيز عدسة النظر بشكل دائم نحو المركز الأساسي للطاولة
+      // ----------------------------------------------------------------------------------
+
       renderer.render(scene, camera);
     };
 
@@ -628,7 +634,6 @@ export default function App() {
     };
     window.addEventListener("resize", handleResize);
 
-    // 8. تنظيف الذاكرة وإلغاء المراجع (Cleanup Strategy)
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
@@ -636,7 +641,6 @@ export default function App() {
         containerRef.current.removeChild(renderer.domElement);
       }
 
-      // التخلص التلقائي لحماية الـ VRAM
       ballGeometry.dispose();
       legGeometry.dispose();
       legMaterial.dispose();
@@ -681,7 +685,6 @@ export default function App() {
         ></section>
 
         <aside className="side-panel">
-          {/* إعدادات الضربة */}
           <section className="panel-section controls">
             <h2>إعدادات الضربة</h2>
             {[
