@@ -331,3 +331,34 @@ button.secondary {
   color: #cbd5e1;
   font-weight: 500;
 }
+/* عندما يتم إخفاء السايد بار، نجعل الـ Canvas يتمدد */
+.layout.sidebar-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* تنسيق زر إخفاء/إظهار السايد بار الداكن ليطفو فوق الكاميرا */
+.toggle-sidebar-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px; /* بما أن الاتجاه RTL */
+  z-index: 10;
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-sidebar-btn:hover {
+  background: #334155;
+  color: #38bdf8;
+  transform: scale(1.05);
+}

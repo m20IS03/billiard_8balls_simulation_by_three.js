@@ -103,6 +103,9 @@ export default function App() {
   const cameraParams = useRef({ angle: 0, distance: 3.5 });
   const containerRef = useRef(null);
 
+  // حالة التحكم في إظهار وإخفاء القائمة الجانبية والزر التبديل
+  const [showSidebar, setShowSidebar] = useState(true);
+
   const [physicsValues, setPhysicsValues] = useState({
     G: PHYSICS_CONFIG_METADATA.G.default,
     MU_S: PHYSICS_CONFIG_METADATA.MU_S.default,
@@ -349,7 +352,7 @@ export default function App() {
         pocket.z,
       );
       pMesh.receiveShadow = true;
-scene.add(pMesh);
+      scene.add(pMesh);
       const rimMesh = new THREE.Mesh(rimGeometry, rimMaterial);
       rimMesh.position.set(pocket.x, TABLE_HEIGHT / 2 + 0.001, pocket.z);
       rimMesh.rotation.x = -Math.PI / 2;
@@ -677,162 +680,190 @@ scene.add(pMesh);
   return (
     <main className="app-shell">
       <Scoreboard stats={stats} />
-      <div className="layout">
+      <div className={`layout ${showSidebar ? "" : "sidebar-hidden"}`}>
         <section
           className="canvas-card"
           aria-label="مشهد البلياردو ثلاثي الأبعاد"
-          ref={containerRef}
-        ></section>
+          style={{ position: "relative" }}
+        >
+          {/* ديف داخلي مخصص ومستقل تماماً لـ Three.js لحماية الأزرار من الاختفاء */}
+          <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
-        <aside className="side-panel">
-          <section className="panel-section controls">
-            <h2>إعدادات الضربة</h2>
-            {[
-              {
-                label: "قوة الضربة (نيوتن)",
-                val: force,
-                setter: setForce,
-                min: 0.5,
-                max: 50,
-                step: 0.5,
-              },
-              {
-                label: "زاوية الضربة (°)",
-                val: angleDeg,
-                setter: setAngleDeg,
-                min: -180,
-                max: 180,
-                step: 1,
-              },
-              {
-                label: `موضع الضربة العمودي (${cueContactMeaning})`,
-                val: cueContactY,
-                setter: setCueContactY,
-                min: -0.7,
-                max: 0.7,
-                step: 0.05,
-              },
-              {
-                label: `موضع الضربة الأفقي (${cueSideMeaning})`,
-                val: cueContactX,
-                setter: setCueContactX,
-                min: -0.7,
-                max: 0.7,
-                step: 0.05,
-              },
-              {
-                label: "ميل العصا للقفز (°)",
-                val: cueElevationDeg,
-                setter: setCueElevationDeg,
-                min: 0,
-                max: 45,
-                step: 1,
-              },
-            ].map((item, idx) => (
-              <div
-                key={idx}
-                className="control-group"
-                style={{ marginBottom: "15px" }}
-              >
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "12px",
-                    marginBottom: "5px",
-                    color: "#cbd5e1",
-                  }}
+          {/* زر التحكم العائم للتبديل وإظهار/إخفاء القائمة الجانبية */}
+          <button
+            className="toggle-sidebar-btn"
+            type="button"
+            onClick={() => setShowSidebar(!showSidebar)}
+            title={showSidebar ? "إخفاء القائمة" : "إظهار القائمة"}
+            style={{
+              position: "absolute",
+              top: "15px",
+              right: "15px",
+              zIndex: 999,
+              padding: "10px 14px",
+              background: "#1e293b",
+              color: "#f8fafc",
+              border: "1px solid #334155",
+              borderRadius: "6px",
+              cursor: "pointer",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+            }}
+          >
+            {showSidebar ? "◀ إخفاء القائمة" : "▶ إظهار القائمة"}
+          </button>
+        </section>
+
+        {showSidebar && (
+          <aside className="side-panel">
+            <section className="panel-section controls">
+              <h2>إعدادات الضربة</h2>
+              {[
+                {
+                  label: "قوة الضربة (نيوتن)",
+                  val: force,
+                  setter: setForce,
+                  min: 0.5,
+                  max: 50,
+                  step: 0.5,
+                },
+                {
+                  label: "زاوية الضربة (°)",
+                  val: angleDeg,
+                  setter: setAngleDeg,
+                  min: -180,
+                  max: 180,
+                  step: 1,
+                },
+                {
+                  label: `موضع الضربة العمودي (${cueContactMeaning})`,
+                  val: cueContactY,
+                  setter: setCueContactY,
+                  min: -0.7,
+                  max: 0.7,
+                  step: 0.05,
+                },
+                {
+                  label: `موضع الضربة الأفقي (${cueSideMeaning})`,
+                  val: cueContactX,
+                  setter: setCueContactX,
+                  min: -0.7,
+                  max: 0.7,
+                  step: 0.05,
+                },
+                {
+                  label: "ميل العصا للقفز (°)",
+                  val: cueElevationDeg,
+                  setter: setCueElevationDeg,
+                  min: 0,
+                  max: 45,
+                  step: 1,
+                },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="control-group"
+                  style={{ marginBottom: "15px" }}
                 >
-                  {item.label}
-                </label>
-                <input
-                  type="number"
-                  value={item.val}
-                  min={item.min}
-                  max={item.max}
-                  step={item.step}
-                  onChange={(e) => item.setter(Number(e.target.value))}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    border: "1px solid #334155",
-                    background: "#1e293b",
-                    color: "#f8fafc",
-                  }}
-                />
-              </div>
-            ))}
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      marginBottom: "5px",
+                      color: "#cbd5e1",
+                    }}
+                  >
+                    {item.label}
+                  </label>
+                  <input
+                    type="number"
+                    value={item.val}
+                    min={item.min}
+                    max={item.max}
+                    step={item.step}
+                    onChange={(e) => item.setter(Number(e.target.value))}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      border: "1px solid #334155",
+                      background: "#1e293b",
+                      color: "#f8fafc",
+                    }}
+                  />
+                </div>
+              ))}
 
-            <div className="button-grid">
-              <button
-                type="button"
-                disabled={!stats.canShoot}
-                onClick={() => setHitSignal((v) => v + 1)}
-              >
-                اضرب الكرة
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setResetSignal((v) => v + 1)}
-              >
-                إعادة ضبط
-              </button>
-            </div>
-          </section>
-
-          {/* إعدادات الفيزياء الرقمية */}
-          <section className="panel-section">
-            <h2>إعدادات الفيزياء</h2>
-            {Object.entries(PHYSICS_CONFIG_METADATA).map(([key, meta]) => (
-              <div
-                key={key}
-                className="control-group"
-                style={{ marginBottom: "15px" }}
-              >
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "12px",
-                    marginBottom: "5px",
-                    color: "#cbd5e1",
-                  }}
+              <div className="button-grid">
+                <button
+                  type="button"
+                  disabled={!stats.canShoot}
+                  onClick={() => setHitSignal((v) => v + 1)}
                 >
-                  {meta.label}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  defaultValue={meta.default}
-                  onBlur={(e) =>
-                    setPhysicsParameter(null, key, parseFloat(e.target.value))
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    border: "1px solid #334155",
-                    background: "#1e293b",
-                    color: "#f8fafc",
-                  }}
-                />
+                  اضرب الكرة
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setResetSignal((v) => v + 1)}
+                >
+                  إعادة ضبط
+                </button>
               </div>
-            ))}
-          </section>
+            </section>
 
-          {/* بيانات الحركة */}
-          <section className="panel-section">
-            <h2>بيانات الحركة</h2>
-            <div className="stats-grid">
-              <Stat title="سرعة البيضاء" value={stats.cueSpeed} />
-              <Stat title="كرات تتحرك" value={stats.moving} />
-              <Stat title="التصادمات" value={stats.collisions} />
-              <Stat title="كرات دخلت" value={stats.pocketed} />
-              <Stat title="Scratch" value={stats.scratches} />
-              <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
-            </div>
-          </section>
-        </aside>
+            {/* إعدادات الفيزياء الرقمية */}
+            <section className="panel-section">
+              <h2>إعدادات الفيزياء</h2>
+              {Object.entries(PHYSICS_CONFIG_METADATA).map(([key, meta]) => (
+                <div
+                  key={key}
+                  className="control-group"
+                  style={{ marginBottom: "15px" }}
+                >
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      marginBottom: "5px",
+                      color: "#cbd5e1",
+                    }}
+                  >
+                    {meta.label}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    defaultValue={meta.default}
+                    onBlur={(e) =>
+                      setPhysicsParameter(null, key, parseFloat(e.target.value))
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      border: "1px solid #334155",
+                      background: "#1e293b",
+                      color: "#f8fafc",
+                    }}
+                  />
+                </div>
+              ))}
+            </section>
+
+            {/* بيانات الحركة */}
+            <section className="panel-section">
+              <h2>بيانات الحركة</h2>
+              <div className="stats-grid">
+                <Stat title="سرعة البيضاء" value={stats.cueSpeed} />
+                <Stat title="كرات تتحرك" value={stats.moving} />
+                <Stat title="التصادمات" value={stats.collisions} />
+                <Stat title="كرات دخلت" value={stats.pocketed} />
+                <Stat title="Scratch" value={stats.scratches} />
+                <Stat title="جاهز للضرب" value={stats.canShoot ? "نعم" : "لا"} />
+              </div>
+            </section>
+          </aside>
+        )}
       </div>
     </main>
   );
