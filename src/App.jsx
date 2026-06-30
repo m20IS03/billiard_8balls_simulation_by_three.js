@@ -28,26 +28,11 @@ function Scoreboard({ stats }) {
   return (
     <div className="scoreboard-container">
       {/* كارت اللاعب الأول */}
-      <div
-        className={`player-card ${stats.currentPlayer === 1 ? "active-player" : ""}`}
-      >
+      <div className={`player-card ${stats.currentPlayer === 1 ? "active-player" : ""}`}>
         <h3>اللاعب 1</h3>
-        <div className="group-badge">
-          {p1Group
-            ? p1Group === "solids"
-              ? "🔴 كرات سادة"
-              : "🎫 كرات مخطط"
-            : "🔄 طاولة مفتوحة"}
-        </div>
+        <div className="group-badge">{p1Group ? (p1Group === "solids" ? "🔴 كرات سادة" : "🎫 كرات مخطط") : "🔄 طاولة مفتوحة"}</div>
         <div className="score-view">
-          الكرات المتبقية:{" "}
-          <strong>
-            {p1Group === "solids"
-              ? stats.solidsRemaining
-              : p1Group === "stripes"
-                ? stats.stripesRemaining
-                : 7}
-          </strong>
+          الكرات المتبقية: <strong>{p1Group === "solids" ? stats.solidsRemaining : p1Group === "stripes" ? stats.stripesRemaining : 7}</strong>
         </div>
       </div>
 
@@ -55,34 +40,15 @@ function Scoreboard({ stats }) {
       <div className="match-status-center">
         <div className="vs-title">قوانين الـ 8-Ball العالمية</div>
         <p className="status-text">{stats.statusMessage}</p>
-        {stats.winner && (
-          <div className="winner-announcement">
-            👑 الفائز هو اللاعب {stats.winner}!
-          </div>
-        )}
+        {stats.winner && <div className="winner-announcement">👑 الفائز هو اللاعب {stats.winner}!</div>}
       </div>
 
       {/* كارت اللاعب الثاني */}
-      <div
-        className={`player-card ${stats.currentPlayer === 2 ? "active-player" : ""}`}
-      >
+      <div className={`player-card ${stats.currentPlayer === 2 ? "active-player" : ""}`}>
         <h3>اللاعب 2</h3>
-        <div className="group-badge">
-          {p2Group
-            ? p2Group === "solids"
-              ? "🔴 كرات سادة"
-              : "🎫 كرات مخطط"
-            : "🔄 طاولة مفتوحة"}
-        </div>
+        <div className="group-badge">{p2Group ? (p2Group === "solids" ? "🔴 كرات سادة" : "🎫 كرات مخطط") : "🔄 طاولة مفتوحة"}</div>
         <div className="score-view">
-          الكرات المتبقية:{" "}
-          <strong>
-            {p2Group === "solids"
-              ? stats.solidsRemaining
-              : p2Group === "stripes"
-                ? stats.stripesRemaining
-                : 7}
-          </strong>
+          الكرات المتبقية: <strong>{p2Group === "solids" ? stats.solidsRemaining : p2Group === "stripes" ? stats.stripesRemaining : 7}</strong>
         </div>
       </div>
     </div>
@@ -141,15 +107,7 @@ export default function App() {
       hitSignal,
       resetSignal,
     };
-  }, [
-    force,
-    angleDeg,
-    cueContactY,
-    cueContactX,
-    cueElevationDeg,
-    hitSignal,
-    resetSignal,
-  ]);
+  }, [force, angleDeg, cueContactY, cueContactX, cueElevationDeg, hitSignal, resetSignal]);
 
   // مراقبة لوحة المفاتيح لتغيير زاوية الكاميرا وعمقها بسلاسة عالية جداً
   useEffect(() => {
@@ -163,17 +121,11 @@ export default function App() {
           break;
         case "w":
         case "W":
-          cameraParams.current.distance = Math.max(
-            1.3,
-            cameraParams.current.distance - 0.15,
-          ); // الحد الأدنى للتقريب
+          cameraParams.current.distance = Math.max(1.3, cameraParams.current.distance - 0.15); // الحد الأدنى للتقريب
           break;
         case "s":
         case "S":
-          cameraParams.current.distance = Math.min(
-            6.5,
-            cameraParams.current.distance + 0.15,
-          ); // الحد الأقصى للتبعيد
+          cameraParams.current.distance = Math.min(6.5, cameraParams.current.distance + 0.15); // الحد الأقصى للتبعيد
           break;
         default:
           break;
@@ -233,10 +185,7 @@ export default function App() {
     const legHeight = 0.75;
     const legY = -0.065 - legHeight / 2;
 
-    const baseMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(TABLE_WIDTH + 0.32, 0.13, TABLE_DEPTH + 0.32),
-      new THREE.MeshStandardMaterial({ color: "#5b341e", roughness: 0.72 }),
-    );
+    const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(TABLE_WIDTH + 0.32, 0.13, TABLE_DEPTH + 0.32), new THREE.MeshStandardMaterial({ color: "#5b341e", roughness: 0.72 }));
     baseMesh.position.set(0, -0.065, 0);
     baseMesh.receiveShadow = true;
     tableGroup.add(baseMesh);
@@ -260,10 +209,7 @@ export default function App() {
       tableGroup.add(legMesh);
     });
 
-    const clothMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(TABLE_WIDTH, TABLE_HEIGHT, TABLE_DEPTH),
-      new THREE.MeshStandardMaterial({ color: "#0f7a43", roughness: 0.92 }),
-    );
+    const clothMesh = new THREE.Mesh(new THREE.BoxGeometry(TABLE_WIDTH, TABLE_HEIGHT, TABLE_DEPTH), new THREE.MeshStandardMaterial({ color: "#0f7a43", roughness: 0.92 }));
     clothMesh.receiveShadow = true;
     tableGroup.add(clothMesh);
 
@@ -271,72 +217,35 @@ export default function App() {
       color: "#6b3f24",
       roughness: 0.74,
     });
-    const r1 = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        TABLE_WIDTH + railThickness * 2,
-        railHeight,
-        railThickness,
-      ),
-      railMaterial,
-    );
+    const r1 = new THREE.Mesh(new THREE.BoxGeometry(TABLE_WIDTH + railThickness * 2, railHeight, railThickness), railMaterial);
     r1.position.set(0, railY, -TABLE_DEPTH / 2 - railThickness / 2);
     r1.castShadow = true;
     tableGroup.add(r1);
 
-    const r2 = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        TABLE_WIDTH + railThickness * 2,
-        railHeight,
-        railThickness,
-      ),
-      railMaterial,
-    );
+    const r2 = new THREE.Mesh(new THREE.BoxGeometry(TABLE_WIDTH + railThickness * 2, railHeight, railThickness), railMaterial);
     r2.position.set(0, railY, TABLE_DEPTH / 2 + railThickness / 2);
     r2.castShadow = true;
     tableGroup.add(r2);
 
-    const r3 = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        railThickness,
-        railHeight,
-        TABLE_DEPTH + railThickness * 2,
-      ),
-      railMaterial,
-    );
+    const r3 = new THREE.Mesh(new THREE.BoxGeometry(railThickness, railHeight, TABLE_DEPTH + railThickness * 2), railMaterial);
     r3.position.set(-TABLE_WIDTH / 2 - railThickness / 2, railY, 0);
     r3.castShadow = true;
     tableGroup.add(r3);
 
-    const r4 = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        railThickness,
-        railHeight,
-        TABLE_DEPTH + railThickness * 2,
-      ),
-      railMaterial,
-    );
+    const r4 = new THREE.Mesh(new THREE.BoxGeometry(railThickness, railHeight, TABLE_DEPTH + railThickness * 2), railMaterial);
     r4.position.set(TABLE_WIDTH / 2 + railThickness / 2, railY, 0);
     r4.castShadow = true;
     tableGroup.add(r4);
 
     const pocketDepth = 0.06;
-    const pocketGeometry = new THREE.CylinderGeometry(
-      POCKET_RADIUS,
-      POCKET_RADIUS * 0.85,
-      pocketDepth,
-      32,
-    );
+    const pocketGeometry = new THREE.CylinderGeometry(POCKET_RADIUS, POCKET_RADIUS * 0.85, pocketDepth, 32);
     const pocketMaterial = new THREE.MeshStandardMaterial({
       color: "#05070f",
       roughness: 0.9,
       metalness: 0.1,
     });
 
-    const rimGeometry = new THREE.RingGeometry(
-      POCKET_RADIUS,
-      POCKET_RADIUS + 0.018,
-      32,
-    );
+    const rimGeometry = new THREE.RingGeometry(POCKET_RADIUS, POCKET_RADIUS + 0.018, 32);
     const rimMaterial = new THREE.MeshStandardMaterial({
       color: "#1e293b",
       roughness: 0.4,
@@ -346,11 +255,7 @@ export default function App() {
 
     POCKETS.forEach((pocket) => {
       const pMesh = new THREE.Mesh(pocketGeometry, pocketMaterial);
-      pMesh.position.set(
-        pocket.x,
-        TABLE_HEIGHT / 2 - pocketDepth / 2,
-        pocket.z,
-      );
+      pMesh.position.set(pocket.x, TABLE_HEIGHT / 2 - pocketDepth / 2, pocket.z);
       pMesh.receiveShadow = true;
       scene.add(pMesh);
       const rimMesh = new THREE.Mesh(rimGeometry, rimMaterial);
@@ -387,17 +292,11 @@ export default function App() {
 
     const cueStickGroup = new THREE.Group();
     const cueLength = 0.72;
-    const stickMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.01, 0.016, cueLength, 24),
-      new THREE.MeshStandardMaterial({ color: "#d6a15d", roughness: 0.62 }),
-    );
+    const stickMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.016, cueLength, 24), new THREE.MeshStandardMaterial({ color: "#d6a15d", roughness: 0.62 }));
     stickMesh.rotation.z = Math.PI / 2;
     cueStickGroup.add(stickMesh);
 
-    const tipMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.006, 0.006, 0.05, 18),
-      new THREE.MeshStandardMaterial({ color: "#e5e7eb", roughness: 0.5 }),
-    );
+    const tipMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 18), new THREE.MeshStandardMaterial({ color: "#e5e7eb", roughness: 0.5 }));
     tipMesh.rotation.z = Math.PI / 2;
     cueStickGroup.add(tipMesh);
     scene.add(cueStickGroup);
@@ -434,10 +333,7 @@ export default function App() {
       };
 
       world.balls.forEach((ball) => {
-        const isStripe =
-          ball.isStripe ||
-          ball.type === "stripes" ||
-          (ball.id >= 9 && ball.id <= 15);
+        const isStripe = ball.isStripe || ball.type === "stripes" || (ball.id >= 9 && ball.id <= 15);
 
         let ballMat;
 
@@ -524,14 +420,7 @@ export default function App() {
 
       if (currentInputs.hitSignal !== lastHitSignal) {
         lastHitSignal = currentInputs.hitSignal;
-        shootCueBall(
-          world,
-          currentInputs.force,
-          currentInputs.angleDeg,
-          currentInputs.cueContactY,
-          currentInputs.cueContactX,
-          currentInputs.cueElevationDeg,
-        );
+        shootCueBall(world, currentInputs.force, currentInputs.angleDeg, currentInputs.cueContactY, currentInputs.cueContactX, currentInputs.cueElevationDeg);
         setStats(getStats(world));
       }
 
@@ -549,16 +438,9 @@ export default function App() {
       ballVisuals.forEach(({ ballData, mesh }) => {
         mesh.visible = ballData.active;
         if (ballData.active) {
-          mesh.position.set(
-            ballData.position.x,
-            ballData.position.y,
-            ballData.position.z,
-          );
+          mesh.position.set(ballData.position.x, ballData.position.y, ballData.position.z);
 
-          if (
-            frameDt > 0 &&
-            (ballData.velocity.x !== 0 || ballData.velocity.z !== 0)
-          ) {
+          if (frameDt > 0 && (ballData.velocity.x !== 0 || ballData.velocity.z !== 0)) {
             mesh.rotation.x += ballData.omega.x * frameDt;
             mesh.rotation.y += ballData.omega.y * frameDt;
             mesh.rotation.z += ballData.omega.z * frameDt;
@@ -568,11 +450,7 @@ export default function App() {
 
       const currentStats = getStats(world);
       const cueBall = world.balls[0];
-      const isMoving = ballVisuals.some(
-        (v) =>
-          v.ballData.active &&
-          (v.ballData.velocity.x !== 0 || v.ballData.velocity.z !== 0),
-      );
+      const isMoving = ballVisuals.some((v) => v.ballData.active && (v.ballData.velocity.x !== 0 || v.ballData.velocity.z !== 0));
 
       if (cueBall && cueBall.active && currentStats.canShoot && !isMoving) {
         aimGuideGroup.visible = true;
@@ -583,22 +461,14 @@ export default function App() {
         const startOffset = BALL_RADIUS + 0.04;
         const guideY = BALL_Y + 0.005;
 
-        aimGuideGroup.position.set(
-          cueBall.position.x,
-          guideY,
-          cueBall.position.z,
-        );
+        aimGuideGroup.position.set(cueBall.position.x, guideY, cueBall.position.z);
         aimGuideGroup.rotation.set(0, -angle, 0);
         guideCylinder.scale.set(1, length, 1);
         guideCylinder.position.set(startOffset + length / 2, 0, 0);
         guideCone.position.set(startOffset + length + 0.035, 0, 0);
 
         const pullBack = 0.12 + (currentInputs.force / 50) * 0.26;
-        cueStickGroup.position.set(
-          cueBall.position.x,
-          guideY,
-          cueBall.position.z,
-        );
+        cueStickGroup.position.set(cueBall.position.x, guideY, cueBall.position.z);
         cueStickGroup.rotation.set(0, -angle, 0);
         stickMesh.position.set(-pullBack - cueLength / 2, 0, 0);
         tipMesh.position.set(-pullBack - 0.025, 0, 0);
@@ -664,28 +534,14 @@ export default function App() {
     };
   }, []);
 
-  const cueContactMeaning =
-    cueContactY > 0.05
-      ? "Topspin"
-      : cueContactY < -0.05
-        ? "Backspin"
-        : "Center";
-  const cueSideMeaning =
-    cueContactX > 0.05
-      ? "Sidespin Right"
-      : cueContactX < -0.05
-        ? "Sidespin Left"
-        : "Center";
+  const cueContactMeaning = cueContactY > 0.05 ? "Topspin" : cueContactY < -0.05 ? "Backspin" : "Center";
+  const cueSideMeaning = cueContactX > 0.05 ? "Sidespin Right" : cueContactX < -0.05 ? "Sidespin Left" : "Center";
 
   return (
     <main className="app-shell">
       <Scoreboard stats={stats} />
       <div className={`layout ${showSidebar ? "" : "sidebar-hidden"}`}>
-        <section
-          className="canvas-card"
-          aria-label="مشهد البلياردو ثلاثي الأبعاد"
-          style={{ position: "relative" }}
-        >
+        <section className="canvas-card" aria-label="مشهد البلياردو ثلاثي الأبعاد" style={{ position: "relative" }}>
           {/* ديف داخلي مخصص ومستقل تماماً لـ Three.js لحماية الأزرار من الاختفاء */}
           <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
@@ -706,7 +562,7 @@ export default function App() {
               border: "1px solid #334155",
               borderRadius: "6px",
               cursor: "pointer",
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
             }}
           >
             {showSidebar ? "◀ إخفاء القائمة" : "▶ إظهار القائمة"}
@@ -759,11 +615,7 @@ export default function App() {
                   step: 1,
                 },
               ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="control-group"
-                  style={{ marginBottom: "15px" }}
-                >
+                <div key={idx} className="control-group" style={{ marginBottom: "15px" }}>
                   <label
                     style={{
                       display: "block",
@@ -794,18 +646,10 @@ export default function App() {
               ))}
 
               <div className="button-grid">
-                <button
-                  type="button"
-                  disabled={!stats.canShoot}
-                  onClick={() => setHitSignal((v) => v + 1)}
-                >
+                <button type="button" disabled={!stats.canShoot} onClick={() => setHitSignal((v) => v + 1)}>
                   اضرب الكرة
                 </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setResetSignal((v) => v + 1)}
-                >
+                <button type="button" className="secondary" onClick={() => setResetSignal((v) => v + 1)}>
                   إعادة ضبط
                 </button>
               </div>
@@ -815,11 +659,7 @@ export default function App() {
             <section className="panel-section">
               <h2>إعدادات الفيزياء</h2>
               {Object.entries(PHYSICS_CONFIG_METADATA).map(([key, meta]) => (
-                <div
-                  key={key}
-                  className="control-group"
-                  style={{ marginBottom: "15px" }}
-                >
+                <div key={key} className="control-group" style={{ marginBottom: "15px" }}>
                   <label
                     style={{
                       display: "block",
@@ -834,9 +674,7 @@ export default function App() {
                     type="number"
                     step="0.01"
                     defaultValue={meta.default}
-                    onBlur={(e) =>
-                      setPhysicsParameter(null, key, parseFloat(e.target.value))
-                    }
+                    onBlur={(e) => setPhysicsParameter(null, key, parseFloat(e.target.value))}
                     style={{
                       width: "100%",
                       padding: "8px",

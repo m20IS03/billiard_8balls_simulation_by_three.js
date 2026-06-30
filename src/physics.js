@@ -47,8 +47,7 @@ export let MU_S = PHYSICS_CONFIG_METADATA.MU_S.default;
 export let BALL_MASS = PHYSICS_CONFIG_METADATA.BALL_MASS.default;
 export let BALL_RESTITUTION = PHYSICS_CONFIG_METADATA.BALL_RESTITUTION.default;
 export let WALL_RESTITUTION = PHYSICS_CONFIG_METADATA.WALL_RESTITUTION.default;
-export let TABLE_RESTITUTION =
-  PHYSICS_CONFIG_METADATA.TABLE_RESTITUTION.default;
+export let TABLE_RESTITUTION = PHYSICS_CONFIG_METADATA.TABLE_RESTITUTION.default;
 
 // عزم القصور الذاتي للكرة (سيتحدث تلقائياً عند تغيير الكتلة)
 export let BALL_INERTIA = (2 / 5) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
@@ -220,12 +219,7 @@ export function isBallMoving(ball) {
   const speedXZ = getSpeedXZ(ball);
   const verticalSpeed = Math.abs(ball.velocity.y);
 
-  return (
-    speedXZ > STOP_SPEED ||
-    verticalSpeed > STOP_SPEED ||
-    ball.isAirborne === true ||
-    ball.position.y > BALL_Y + 0.0005
-  );
+  return speedXZ > STOP_SPEED || verticalSpeed > STOP_SPEED || ball.isAirborne === true || ball.position.y > BALL_Y + 0.0005;
 }
 
 export function areAnyBallsMoving(balls) {
@@ -312,14 +306,7 @@ function updateMotionState(ball) {
   }
 }
 
-export function shootCueBall(
-  world,
-  forceInNewtons,
-  angleDeg,
-  cueContactY = 0,
-  cueContactX = 0,
-  cueElevationDeg = 0,
-) {
+export function shootCueBall(world, forceInNewtons, angleDeg, cueContactY = 0, cueContactX = 0, cueElevationDeg = 0) {
   const cue = world.balls[0];
 
   if (!cue || !cue.active || areAnyBallsMoving(world.balls)) {
@@ -333,9 +320,7 @@ export function shootCueBall(
   const clampedContactY = THREE.MathUtils.clamp(cueContactY, -0.7, 0.7);
   const clampedContactX = THREE.MathUtils.clamp(cueContactX, -0.7, 0.7);
 
-  const alpha = THREE.MathUtils.degToRad(
-    THREE.MathUtils.clamp(cueElevationDeg, 0, 85),
-  );
+  const alpha = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(cueElevationDeg, 0, 85));
   const angle = THREE.MathUtils.degToRad(angleDeg);
 
   const horizontalSpeed = shotSpeed * Math.cos(alpha);
@@ -440,14 +425,9 @@ function applySideSpinCurve(ball, dt) {
   const sideX = -dirZ;
   const sideZ = dirX;
 
-  let sideAcceleration =
-    SIDE_SPIN_CURVE_COEFFICIENT * BALL_RADIUS * ball.omega.y * speed;
+  let sideAcceleration = SIDE_SPIN_CURVE_COEFFICIENT * BALL_RADIUS * ball.omega.y * speed;
 
-  sideAcceleration = clamp(
-    sideAcceleration,
-    -MAX_SIDE_SPIN_ACCELERATION,
-    MAX_SIDE_SPIN_ACCELERATION,
-  );
+  sideAcceleration = clamp(sideAcceleration, -MAX_SIDE_SPIN_ACCELERATION, MAX_SIDE_SPIN_ACCELERATION);
 
   ball.velocity.x += sideX * sideAcceleration * dt;
   ball.velocity.z += sideZ * sideAcceleration * dt;
@@ -656,7 +636,7 @@ export function resolveBallCollisions(world) {
   const balls = world.balls;
   const minDistance = BALL_RADIUS * 2;
   const minDistanceSq = minDistance * minDistance;
-  
+
   // 💡 فرض الفصل الكامل الفوري بنسبة 100% لكسر حلقة التداخل التراكمي نهائياً
   const slop = 0.0;
   const percent = 1.0;
@@ -690,7 +670,9 @@ export function resolveBallCollisions(world) {
           dy = use3D ? rvy / relativeSpeed : 0;
           dz = rvz / relativeSpeed;
         } else {
-          dx = 1; dy = 0; dz = 0;
+          dx = 1;
+          dy = 0;
+          dz = 0;
         }
         distance = 1;
         distanceSq = distance * distance;
@@ -777,10 +759,10 @@ export function resolveBallCollisions(world) {
       const vRelT = (contactB.x - contactA.x) * tx + (contactB.z - contactA.z) * tz;
 
       const tangentialDenominator = invMassA + invMassB + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA;
-      
+
       // 💡 تعديل جوهري: التخلص من المعامل العشوائي TANGENTIAL_RESTITUTION وحساب الاندفاع المماسي النقي
-      const rawTangentImpulse = (-vRelT) / tangentialDenominator;
-      
+      const rawTangentImpulse = -vRelT / tangentialDenominator;
+
       // تطبيق قانون كولوم الحقيقي للاحتكاك الديناميكي (حصر القوة المماسية بناءً على قوة الاندفاع العمودي)
       const MU_BALLS = 0.12; // معامل الاحتكاك الطبيعي لأسطح كرات البلياردو
       const maxFriction = MU_BALLS * impulseMagnitude;
@@ -834,13 +816,7 @@ function respotCueBallIfNeeded(world) {
 
   for (let xIndex = 0; xIndex < 6; xIndex += 1) {
     for (let zIndex = -3; zIndex <= 3; zIndex += 1) {
-      candidates.push(
-        new THREE.Vector3(
-          CUE_START.x - xIndex * spacing,
-          BALL_Y,
-          CUE_START.z + zIndex * spacing,
-        ),
-      );
+      candidates.push(new THREE.Vector3(CUE_START.x - xIndex * spacing, BALL_Y, CUE_START.z + zIndex * spacing));
     }
   }
 
@@ -881,9 +857,7 @@ export function stepWorld(world, dt) {
       ball.position.y += ball.velocity.y * dt;
 
       // رصد هل الكرة فوق الطاولة أم خارج الطاولة تماماً
-      const isOverTable =
-        Math.abs(ball.position.x) <= TABLE_WIDTH / 2 &&
-        Math.abs(ball.position.z) <= TABLE_DEPTH / 2;
+      const isOverTable = Math.abs(ball.position.x) <= TABLE_WIDTH / 2 && Math.abs(ball.position.z) <= TABLE_DEPTH / 2;
 
       if (isOverTable) {
         if (ball.position.y <= BALL_Y) {
@@ -905,9 +879,7 @@ export function stepWorld(world, dt) {
       }
     } else {
       // حماية إضافية في حال تخطت الكرة الحدود دون تفعيل airborne
-      const isOverTable =
-        Math.abs(ball.position.x) <= TABLE_WIDTH / 2 &&
-        Math.abs(ball.position.z) <= TABLE_DEPTH / 2;
+      const isOverTable = Math.abs(ball.position.x) <= TABLE_WIDTH / 2 && Math.abs(ball.position.z) <= TABLE_DEPTH / 2;
 
       if (!isOverTable) {
         handleBallJumpedOffTable(world, ball);
