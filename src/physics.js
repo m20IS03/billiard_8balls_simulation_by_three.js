@@ -5,15 +5,15 @@ export const TABLE_WIDTH = 2.84;
 export const TABLE_DEPTH = 1.42;
 export const TABLE_HEIGHT = 0.025;
 
-export const RAIL_TOP_Y = TABLE_HEIGHT / 2 + 0.075; // الارتفاع الأقصى للحافة الجانبية
+export const RAIL_TOP_Y = TABLE_HEIGHT / 2 + 0.075; // الحافة الجانبية
 export const BALL_RADIUS = 0.0286;
 export const BALL_Y = TABLE_HEIGHT / 2 + BALL_RADIUS;
 export const POCKET_RADIUS = 0.075;
-// 1. توصيف المعطيات الفيزيائية: القيم الافتراضية والحدود المسموحة (Min / Max)
+// 1.  المعطيات الفيزيائية: الحدود المسموحة (Min / Max)
 export const PHYSICS_CONFIG_METADATA = {
-  G: { label: "الجاذبية العمودية", default: 9.81, min: 0, max: 25 }, // 0 تعني انعدام الجاذبية تماماً
-  MU_S: { label: "معامل احتكاك الانزلاق", default: 0.2, min: 0, max: 1.0 }, // 0 تعني إهمال احتكاك الانزلاق
-  MU_R: { label: "معامل احتكاك التدحرج", default: 0.015, min: 0, max: 0.1 }, // 0 تعني إهمال احتكاك التدحرج
+  G: { label: "الجاذبية العمودية", default: 9.81, min: 0, max: 25 },
+  MU_S: { label: "معامل احتكاك الانزلاق", default: 0.2, min: 0, max: 1.0 },
+  MU_R: { label: "معامل احتكاك التدحرج", default: 0.015, min: 0, max: 0.1 },
   BALL_MASS: {
     label: "كتلة الكرة (كيلوجرام)",
     default: 0.17,
@@ -40,7 +40,6 @@ export const PHYSICS_CONFIG_METADATA = {
   },
 };
 
-// 2. تعيين المتغيرات الحية القابلة للتحديث الحركي (باستخدام let بدلاً من const)
 export let G = PHYSICS_CONFIG_METADATA.G.default;
 export let MU_R = PHYSICS_CONFIG_METADATA.MU_R.default;
 export let MU_S = PHYSICS_CONFIG_METADATA.MU_S.default;
@@ -49,12 +48,10 @@ export let BALL_RESTITUTION = PHYSICS_CONFIG_METADATA.BALL_RESTITUTION.default;
 export let WALL_RESTITUTION = PHYSICS_CONFIG_METADATA.WALL_RESTITUTION.default;
 export let TABLE_RESTITUTION = PHYSICS_CONFIG_METADATA.TABLE_RESTITUTION.default;
 
-// عزم القصور الذاتي للكرة (سيتحدث تلقائياً عند تغيير الكتلة)
 export let BALL_INERTIA = (2 / 5) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
 
-// Sidespin path curvature
-export const SIDE_SPIN_CURVE_COEFFICIENT = 0.015;
-export const SIDE_SPIN_EPSILON = 0.05;
+export const SIDE_SPIN_CURVE_COEFFICIENT = 0.12;
+export const SIDE_SPIN_EPSILON = 2.0;
 export const MAX_SIDE_SPIN_ACCELERATION = 0.35;
 
 export const BALL_TANGENTIAL_RESTITUTION = 0.0;
@@ -445,7 +442,7 @@ function handleBallJumpedOffTable(world, ball) {
     return;
   }
 
-  // ب. إذا كانت الكرة الخارجة هي السوداء (رقم 8)
+  // ب. إذا كانت الكرة الخارجة هي السوداء)
   if (ball.id === 8) {
     const pGroup = world.playerGroups[world.currentPlayer];
     if (!pGroup) {
@@ -464,14 +461,14 @@ function handleBallJumpedOffTable(world, ball) {
     return;
   }
 
-  // ج. تصنيف الكرات العادية
+  //. تصنيف الكرات العادية
   const group = ball.id < 8 ? "solids" : "stripes";
 
   if (group === "solids") world.solidsRemaining = Math.max(0, world.solidsRemaining - 1);
   if (group === "stripes") world.stripesRemaining = Math.max(0, world.stripesRemaining - 1);
   world.pocketed += 1;
 
-  // د. تحديد المجموعات لأول مرة إذا كانت الطاولة مفتوحة
+  //  تحديد المجموعات لأول مرة إذا كانت الطاولة مفتوحة
   if (!world.playerGroups[1] && !world.playerGroups[2]) {
     const active = world.currentPlayer;
     const opponent = active === 1 ? 2 : 1;
@@ -637,7 +634,6 @@ export function resolveBallCollisions(world) {
   const minDistance = BALL_RADIUS * 2;
   const minDistanceSq = minDistance * minDistance;
 
-  // 💡 فرض الفصل الكامل الفوري بنسبة 100% لكسر حلقة التداخل التراكمي نهائياً
   const slop = 0.0;
   const percent = 1.0;
 
@@ -708,7 +704,6 @@ export function resolveBallCollisions(world) {
       const relNormal = rvx * nx + rvy * ny + rvz * nz;
 
       if (relNormal >= 0) {
-        // إذا تم فصلهما وهما يبتعدان بالفعل، نتأكد من تحديث حالتهما الحركية لضمان الاستقرار
         if (!use3D) {
           updateMotionState(a);
           updateMotionState(b);
@@ -760,7 +755,7 @@ export function resolveBallCollisions(world) {
 
       const tangentialDenominator = invMassA + invMassB + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA + (BALL_RADIUS * BALL_RADIUS) / BALL_INERTIA;
 
-      // 💡 تعديل جوهري: التخلص من المعامل العشوائي TANGENTIAL_RESTITUTION وحساب الاندفاع المماسي النقي
+      // 💡  وحساب الاندفاع المماسي
       const rawTangentImpulse = -vRelT / tangentialDenominator;
 
       // تطبيق قانون كولوم الحقيقي للاحتكاك الديناميكي (حصر القوة المماسية بناءً على قوة الاندفاع العمودي)

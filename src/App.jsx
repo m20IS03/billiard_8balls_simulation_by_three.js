@@ -114,14 +114,14 @@ export default function App() {
     const handleKeyDown = (e) => {
       switch (e.key) {
         case "ArrowLeft":
-          cameraParams.current.angle -= 0.08; // سرعة الدوران لليسار
+          cameraParams.current.angle -= 0.08;
           break;
         case "ArrowRight":
-          cameraParams.current.angle += 0.08; // سرعة الدوران لليمين
+          cameraParams.current.angle += 0.08;
           break;
         case "w":
         case "W":
-          cameraParams.current.distance = Math.max(1.3, cameraParams.current.distance - 0.15); // الحد الأدنى للتقريب
+          cameraParams.current.distance = Math.max(1.3, cameraParams.current.distance - 0.15);
           break;
         case "s":
         case "S":
