@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import Scoreboard from "./Scoreboard";
 import {
   BALL_RADIUS,
   BALL_Y,
