@@ -1,4 +1,4 @@
-//GameRules.js
+//useBilliardEngine.js
 import { useEffect } from "react";
 import * as THREE from "three";
 
